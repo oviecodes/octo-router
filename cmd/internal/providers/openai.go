@@ -3,7 +3,7 @@ package providers
 import (
 	"context"
 	"fmt"
-	"llm-router/cmd/internal/router"
+	"llm-router/cmd/internal/types"
 
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
@@ -22,7 +22,7 @@ type OpenAIProvider struct {
 	model     string
 }
 
-func (o *OpenAIProvider) Complete(ctx context.Context, messages []router.Message) (*router.Message, error) {
+func (o *OpenAIProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
 
 	openAIMessages := o.convertMessages(messages)
 
@@ -41,7 +41,7 @@ func (o *OpenAIProvider) Complete(ctx context.Context, messages []router.Message
 	return &response, nil
 }
 
-func (o *OpenAIProvider) convertMessages(messages []router.Message) []openai.ChatCompletionMessageParamUnion {
+func (o *OpenAIProvider) convertMessages(messages []types.Message) []openai.ChatCompletionMessageParamUnion {
 	var openAIMessages []openai.ChatCompletionMessageParamUnion
 
 	for _, message := range messages {
@@ -59,15 +59,15 @@ func (o *OpenAIProvider) convertMessages(messages []router.Message) []openai.Cha
 	return openAIMessages
 }
 
-func (o *OpenAIProvider) convertToRouterMessage(openAIMessage *openai.ChatCompletion) router.Message {
+func (o *OpenAIProvider) convertToRouterMessage(openAIMessage *openai.ChatCompletion) types.Message {
 
-	return router.Message{
+	return types.Message{
 		Role:    string(openAIMessage.Choices[0].Message.Role),
 		Content: openAIMessage.Choices[0].Message.Content,
 	}
 }
 
-func (o *OpenAIProvider) CountTokens(ctx context.Context, messages []router.Message) (int, error) {
+func (o *OpenAIProvider) CountTokens(ctx context.Context, messages []types.Message) (int, error) {
 	// Use tiktoken to estimate tokens locally (fast, no API calls, no rate limits)
 	encoding, err := tiktoken.GetEncoding("cl100k_base")
 	if err != nil {
@@ -88,7 +88,7 @@ func (o *OpenAIProvider) CountTokens(ctx context.Context, messages []router.Mess
 	return totalTokens, nil
 }
 
-func NewOpenAIProvider(config OpenAIConfig) *OpenAIProvider {
+func NewOpenAIProvider(config OpenAIConfig) (*OpenAIProvider, error) {
 	client := openai.NewClient(
 		option.WithAPIKey(config.APIKey),
 	)
@@ -99,7 +99,7 @@ func NewOpenAIProvider(config OpenAIConfig) *OpenAIProvider {
 		client:    client,
 		model:     model,
 		maxTokens: int64(config.MaxTokens),
-	}
+	}, nil
 }
 
 func selectOpenAIModel(model string) string {

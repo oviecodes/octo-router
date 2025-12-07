@@ -1,6 +1,7 @@
 package router
 
-type Message struct {
-	Role    string
-	Content string
-}
+import "llm-router/cmd/internal/types"
+
+// Message is an alias to types.Message for backward compatibility
+// Use types.Message directly in new code
+type Message = types.Message

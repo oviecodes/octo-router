@@ -3,7 +3,7 @@ package providers
 import (
 	"context"
 	"fmt"
-	"llm-router/cmd/internal/router"
+	"llm-router/cmd/internal/types"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -22,7 +22,7 @@ type AnthropicProvider struct {
 	maxTokens int64
 }
 
-func (a *AnthropicProvider) Complete(ctx context.Context, messages []router.Message) (*router.Message, error) {
+func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
 	// Send all messages in the conversation
 	anthropicMessages := a.convertMessages(messages)
 
@@ -40,7 +40,7 @@ func (a *AnthropicProvider) Complete(ctx context.Context, messages []router.Mess
 	return response, nil
 }
 
-func (a *AnthropicProvider) convertMessages(messages []router.Message) []anthropic.MessageParam {
+func (a *AnthropicProvider) convertMessages(messages []types.Message) []anthropic.MessageParam {
 	var anthropicMessages []anthropic.MessageParam
 
 	for _, message := range messages {
@@ -57,7 +57,7 @@ func (a *AnthropicProvider) convertMessages(messages []router.Message) []anthrop
 	return anthropicMessages
 }
 
-func (a *AnthropicProvider) convertToRouterMessage(message *anthropic.Message) *router.Message {
+func (a *AnthropicProvider) convertToRouterMessage(message *anthropic.Message) *types.Message {
 	// Extract text content from content blocks
 	var content string
 
@@ -76,13 +76,13 @@ func (a *AnthropicProvider) convertToRouterMessage(message *anthropic.Message) *
 		}
 	}
 
-	return &router.Message{
+	return &types.Message{
 		Role:    string(message.Role),
 		Content: content,
 	}
 }
 
-func (a *AnthropicProvider) CountTokens(ctx context.Context, messages []router.Message) (int, error) {
+func (a *AnthropicProvider) CountTokens(ctx context.Context, messages []types.Message) (int, error) {
 	// Use tiktoken to estimate tokens locally (fast, no API calls, no rate limits)
 	encoding, err := tiktoken.GetEncoding("cl100k_base")
 	if err != nil {
