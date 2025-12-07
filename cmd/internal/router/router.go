@@ -27,12 +27,11 @@ func NewRoundRobinRouter(config types.RouterConfig) (*RoundRobinRouter, error) {
 
 	providers := providers.ConfigureProviders(config.Providers, types.ProviderExtra{
 		Model:     config.Model,
-		MaxTokens: config.MaxTokens,
+		MaxTokens: int64(config.MaxTokens),
 	})
 
 	return &RoundRobinRouter{
 		current:   0,
 		providers: providers,
-		mu:        sync.Mutex{},
 	}, nil
 }

@@ -12,7 +12,7 @@ import (
 
 type OpenAIConfig struct {
 	APIKey    string
-	MaxTokens int
+	MaxTokens int64
 	Model     string
 }
 

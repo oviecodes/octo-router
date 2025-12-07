@@ -57,7 +57,7 @@ func initializeRouter(cfg *config.Config) (*router.RoundRobinRouter, error) {
 
 	routerConfig := types.RouterConfig{
 		Providers: enabled,
-		MaxTokens: int(cfg.MaxTokens),
+		MaxTokens: int64(cfg.MaxTokens),
 		Model:     cfg.Model,
 	}
 

@@ -8,5 +8,5 @@ type ProviderConfig struct {
 
 type ProviderExtra struct {
 	Model     string
-	MaxTokens int
+	MaxTokens int64
 }

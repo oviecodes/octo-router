@@ -11,6 +11,10 @@ type Provider interface {
 	CountTokens(ctx context.Context, messages []types.Message) (int, error)
 }
 
+// var configMap = map[string] Provider{
+// 	"openai": &OpenAIProvider{},
+// }
+
 func ConfigureProviders(configs []types.ProviderConfig, extra types.ProviderExtra) []Provider {
 
 	var providers []Provider
@@ -25,7 +29,8 @@ func ConfigureProviders(configs []types.ProviderConfig, extra types.ProviderExtr
 			})
 
 			if err != nil {
-				log.Fatalf("cannot configure %v provider", config.Name)
+				log.Printf("cannot configure %v provider", config.Name)
+				continue
 			}
 
 			providers = append(providers, provider)
@@ -38,10 +43,14 @@ func ConfigureProviders(configs []types.ProviderConfig, extra types.ProviderExtr
 			})
 
 			if err != nil {
-				log.Fatalf("cannot configure %v provider", config.Name)
+				log.Printf("cannot configure %v provider", config.Name)
+				continue
 			}
 
 			providers = append(providers, provider)
+
+		default:
+			log.Printf("Warning: unknown provider %s, skipping", config.Name)
 		}
 
 	}
