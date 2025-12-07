@@ -2,17 +2,10 @@ package router
 
 import (
 	"context"
-	"fmt"
 	"llm-router/cmd/internal/providers"
+	"llm-router/types"
 	"sync"
 )
-
-type RouterConfig struct {
-	AnthropicAPIKey string
-	OpenAIAPIKey    string
-	MaxTokens       int
-	model           string
-}
 
 type RoundRobinRouter struct {
 	providers []providers.Provider
@@ -30,34 +23,16 @@ func (r *RoundRobinRouter) SelectProvider(ctx context.Context) providers.Provide
 	return provider
 }
 
-func NewRoundRobinRouter(config RouterConfig) (*RoundRobinRouter, error) {
-	// TODO: check the configAPIKeys then determine which provider to set up.
-	anthropicProvider, err := providers.NewAnthropicProvider(providers.AnthropicConfig{
-		APIKey:    config.AnthropicAPIKey,
+func NewRoundRobinRouter(config types.RouterConfig) (*RoundRobinRouter, error) {
+
+	providers := providers.ConfigureProviders(config.Providers, types.ProviderExtra{
+		Model:     config.Model,
 		MaxTokens: config.MaxTokens,
-		Model:     config.model,
 	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Anthropic provider: %w", err)
-	}
-
-	openaiProvider, err := providers.NewOpenAIProvider(providers.OpenAIConfig{
-		APIKey:    config.OpenAIAPIKey,
-		MaxTokens: config.MaxTokens,
-		Model:     config.model,
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to create OpenAI provider: %w", err)
-	}
 
 	return &RoundRobinRouter{
-		current: 0,
-		providers: []providers.Provider{
-			anthropicProvider,
-			openaiProvider,
-		},
-		mu: sync.Mutex{},
+		current:   0,
+		providers: providers,
+		mu:        sync.Mutex{},
 	}, nil
 }

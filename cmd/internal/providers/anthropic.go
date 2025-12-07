@@ -3,7 +3,7 @@ package providers
 import (
 	"context"
 	"fmt"
-	"llm-router/cmd/internal/types"
+	"llm-router/types"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"

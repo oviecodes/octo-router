@@ -3,7 +3,7 @@ package providers
 import (
 	"context"
 	"fmt"
-	"llm-router/cmd/internal/types"
+	"llm-router/types"
 
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"

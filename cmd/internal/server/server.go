@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"llm-router/cmd/internal/router"
 	"llm-router/config"
+	"llm-router/types"
 	"log"
 	"net/http"
 
@@ -54,24 +55,16 @@ func initializeRouter(cfg *config.Config) (*router.RoundRobinRouter, error) {
 		return nil, fmt.Errorf("no enabled providers found in config")
 	}
 
-	// Get API keys from enabled providers
-	var anthropicKey, openaiKey string
-	for _, p := range enabled {
-		switch p.Name {
-		case "anthropic":
-			anthropicKey = p.APIKey
-		case "openai":
-			openaiKey = p.APIKey
-		}
+	routerConfig := types.RouterConfig{
+		Providers: enabled,
+		MaxTokens: int(cfg.MaxTokens),
+		Model:     cfg.Model,
 	}
 
 	// Create router with config
-	// round robin for now, later (selectRouter) will determine what router type use based on config
-	return router.NewRoundRobinRouter(router.RouterConfig{
-		AnthropicAPIKey: anthropicKey,
-		OpenAIAPIKey:    openaiKey,
-		MaxTokens:       4096, // TODO: get from config
-	})
+	// round robin for now,
+	// later (selectRouter) will determine what router type use based on config
+	return router.NewRoundRobinRouter(routerConfig)
 }
 
 func (app *App) health(c *gin.Context) {

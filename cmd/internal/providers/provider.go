@@ -2,18 +2,48 @@ package providers
 
 import (
 	"context"
-	"llm-router/cmd/internal/types"
+	"llm-router/types"
+	"log"
 )
-
-type ProviderConfig struct {
-	// openAPIKey
-}
 
 type Provider interface {
 	Complete(ctx context.Context, messages []types.Message) (*types.Message, error)
 	CountTokens(ctx context.Context, messages []types.Message) (int, error)
 }
 
-func configureProviders(config ProviderConfig) []Provider {
-	return []Provider{}
+func ConfigureProviders(configs []types.ProviderConfig, extra types.ProviderExtra) []Provider {
+
+	var providers []Provider
+
+	for _, config := range configs {
+		switch config.Name {
+		case "openai":
+			provider, err := NewOpenAIProvider(OpenAIConfig{
+				APIKey:    config.APIKey,
+				MaxTokens: extra.MaxTokens,
+				Model:     extra.Model,
+			})
+
+			if err != nil {
+				log.Fatalf("cannot configure %v provider", config.Name)
+			}
+
+			providers = append(providers, provider)
+
+		case "anthropic":
+			provider, err := NewAnthropicProvider(AnthropicConfig{
+				APIKey:    config.APIKey,
+				MaxTokens: extra.MaxTokens,
+				Model:     extra.Model,
+			})
+
+			if err != nil {
+				log.Fatalf("cannot configure %v provider", config.Name)
+			}
+
+			providers = append(providers, provider)
+		}
+
+	}
+	return providers
 }

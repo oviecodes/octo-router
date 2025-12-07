@@ -2,18 +2,15 @@ package config
 
 import (
 	"fmt"
+	"llm-router/types"
 
 	"github.com/spf13/viper"
 )
 
-type ProviderConfig struct {
-	Name    string `mapstructure:"name"`
-	APIKey  string `mapstructure:"apiKey"`
-	Enabled bool   `mapstructure:"enabled"`
-}
-
 type Config struct {
-	Providers []ProviderConfig `mapstructure:"providers"`
+	Providers []types.ProviderConfig `mapstructure:"providers"`
+	MaxTokens int64                  `mapstructure:"models.maxTokens"`
+	Model     string                 `mapstructure:"models.default"`
 }
 
 // LoadConfig reads the config.yaml file from the project root
@@ -39,8 +36,8 @@ func LoadConfig() (*Config, error) {
 }
 
 // GetEnabledProviders returns only the enabled providers
-func (c *Config) GetEnabledProviders() []ProviderConfig {
-	var enabled []ProviderConfig
+func (c *Config) GetEnabledProviders() []types.ProviderConfig {
+	var enabled []types.ProviderConfig
 	for _, provider := range c.Providers {
 		if provider.Enabled {
 			enabled = append(enabled, provider)
@@ -50,7 +47,7 @@ func (c *Config) GetEnabledProviders() []ProviderConfig {
 }
 
 // GetProviderByName returns a specific provider by name
-func (c *Config) GetProviderByName(name string) *ProviderConfig {
+func (c *Config) GetProviderByName(name string) *types.ProviderConfig {
 	for _, provider := range c.Providers {
 		if provider.Name == name {
 			return &provider
