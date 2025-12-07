@@ -31,6 +31,7 @@ func (r *RoundRobinRouter) SelectProvider(ctx context.Context) providers.Provide
 }
 
 func NewRoundRobinRouter(config RouterConfig) (*RoundRobinRouter, error) {
+	// TODO: check the configAPIKeys then determine which provider to set up.
 	anthropicProvider, err := providers.NewAnthropicProvider(providers.AnthropicConfig{
 		APIKey:    config.AnthropicAPIKey,
 		MaxTokens: config.MaxTokens,
