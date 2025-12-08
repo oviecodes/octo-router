@@ -3,7 +3,9 @@ package providers
 import (
 	"context"
 	"llm-router/types"
-	"log"
+	"os"
+
+	"go.uber.org/zap"
 )
 
 type Provider interface {
@@ -11,9 +13,7 @@ type Provider interface {
 	CountTokens(ctx context.Context, messages []types.Message) (int, error)
 }
 
-// var configMap = map[string] Provider{
-// 	"openai": &OpenAIProvider{},
-// }
+var logger = setUpLogger()
 
 func ConfigureProviders(configs []types.ProviderConfig, extra types.ProviderExtra) []Provider {
 
@@ -29,7 +29,7 @@ func ConfigureProviders(configs []types.ProviderConfig, extra types.ProviderExtr
 			})
 
 			if err != nil {
-				log.Printf("cannot configure %v provider", config.Name)
+				logger.Sugar().Infof("Cannot set up %v provider", config.Name)
 				continue
 			}
 
@@ -43,16 +43,27 @@ func ConfigureProviders(configs []types.ProviderConfig, extra types.ProviderExtr
 			})
 
 			if err != nil {
-				log.Printf("cannot configure %v provider", config.Name)
+				logger.Sugar().Infof("Cannot set up %v provider", config.Name)
 				continue
 			}
 
 			providers = append(providers, provider)
 
 		default:
-			log.Printf("Warning: unknown provider %s, skipping", config.Name)
+			logger.Sugar().Infof("Warning: unknown provider %s, skipping", config.Name)
 		}
 
 	}
 	return providers
+}
+
+func setUpLogger() *zap.Logger {
+	switch os.Getenv("APP_ENV") {
+	case "production":
+		log, _ := zap.NewProduction()
+		return log
+	default:
+		log, _ := zap.NewDevelopment()
+		return log
+	}
 }

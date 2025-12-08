@@ -5,7 +5,6 @@ import (
 	"llm-router/cmd/internal/router"
 	"llm-router/config"
 	"llm-router/types"
-	"log"
 	"net/http"
 	"os"
 
@@ -57,7 +56,7 @@ func Server() {
 	ginRouter.POST("/admin/config", app.adminConfig)
 	ginRouter.POST("/admin/providers", app.adminProviders)
 
-	log.Println("Starting server on localhost:8000")
+	logger.Info("Starting server on localhost:8000")
 	ginRouter.Run("localhost:8000")
 }
 
