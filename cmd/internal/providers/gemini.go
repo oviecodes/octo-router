@@ -107,7 +107,10 @@ func (g *GeminiProvider) CountTokens(ctx context.Context, messages []types.Messa
 
 func NewGeminiProvider(config GeminiConfig) (*GeminiProvider, error) {
 	ctx := context.Background()
-	client, err := genai.NewClient(ctx, nil)
+	client, err := genai.NewClient(ctx, &genai.ClientConfig{
+		APIKey:  config.APIKey,
+		Backend: genai.BackendGeminiAPI,
+	})
 
 	if err != nil {
 		return nil, err

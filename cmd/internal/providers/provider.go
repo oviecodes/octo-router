@@ -29,7 +29,7 @@ func ConfigureProviders(configs []types.ProviderConfig, extra types.ProviderExtr
 			})
 
 			if err != nil {
-				logger.Sugar().Infof("Cannot set up %v provider", config.Name)
+				logger.Sugar().Errorf("Cannot set up %v provider", config.Name, zap.Error(err))
 				continue
 			}
 
@@ -43,7 +43,7 @@ func ConfigureProviders(configs []types.ProviderConfig, extra types.ProviderExtr
 			})
 
 			if err != nil {
-				logger.Sugar().Infof("Cannot set up %v provider", config.Name)
+				logger.Sugar().Errorf("Cannot set up %v provider", config.Name, zap.Error(err))
 				continue
 			}
 
@@ -57,7 +57,7 @@ func ConfigureProviders(configs []types.ProviderConfig, extra types.ProviderExtr
 			})
 
 			if err != nil {
-				logger.Sugar().Infof("Cannot set up %v provider", config.Name)
+				logger.Sugar().Errorf("Cannot set up %v provider", config.Name, zap.Error(err))
 				continue
 			}
 
