@@ -49,6 +49,20 @@ func ConfigureProviders(configs []types.ProviderConfig, extra types.ProviderExtr
 
 			providers = append(providers, provider)
 
+		case "gemini":
+			provider, err := NewGeminiProvider(GeminiConfig{
+				APIKey:    config.APIKey,
+				MaxTokens: extra.MaxTokens,
+				Model:     extra.Model,
+			})
+
+			if err != nil {
+				logger.Sugar().Infof("Cannot set up %v provider", config.Name)
+				continue
+			}
+
+			providers = append(providers, provider)
+
 		default:
 			logger.Sugar().Infof("Warning: unknown provider %s, skipping", config.Name)
 		}

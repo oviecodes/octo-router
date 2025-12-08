@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"llm-router/types"
-	"log"
 
 	"github.com/pkoukk/tiktoken-go"
 	"google.golang.org/genai"
@@ -22,7 +21,7 @@ type GeminiProvider struct {
 	model     string
 }
 
-func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message) types.Message {
+func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
 
 	//convert to geminiMessageformat
 	geminiMessages, currentMessage := g.convertMessages(messages)
@@ -35,33 +34,33 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 	)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	res, err := chat.SendMessage(ctx, genai.Part{Text: currentMessage})
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
+	var response *types.Message
+
+	// convert to octo-router message type
 	if len(res.Candidates) > 0 {
-		fmt.Println(res.Candidates[0].Content.Parts[0].Text)
+		response = g.convertToRouterMessage(res.Candidates[0].Content.Parts[0].Text)
 	}
 
-	//convert result to octo-router format
-
-	return types.Message{}
+	return response, nil
 }
 
 func (g *GeminiProvider) convertMessages(messages []types.Message) ([]*genai.Content, string) {
 	var geminiMessages []*genai.Content
-
 	var lastMessage string
 
 	for i, message := range messages {
 		var toAppend *genai.Content
 
-		if i == len(messages) {
+		if i == len(messages)-1 {
 			lastMessage = message.Content
 			break
 		}
@@ -75,11 +74,14 @@ func (g *GeminiProvider) convertMessages(messages []types.Message) ([]*genai.Con
 		geminiMessages = append(geminiMessages, toAppend)
 	}
 
-	// for _, message := range latestMessageSlice {
-
-	// }
-
 	return geminiMessages, lastMessage
+}
+
+func (g *GeminiProvider) convertToRouterMessage(text string) *types.Message {
+	return &types.Message{
+		Content: string(text),
+		Role:    "user",
+	}
 }
 
 func (g *GeminiProvider) CountTokens(ctx context.Context, messages []types.Message) (int, error) {
@@ -103,17 +105,32 @@ func (g *GeminiProvider) CountTokens(ctx context.Context, messages []types.Messa
 	return totalTokens, nil
 }
 
-func NewGeminiProvider(config GeminiConfig) *GeminiProvider {
+func NewGeminiProvider(config GeminiConfig) (*GeminiProvider, error) {
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx, nil)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
+
+	model := selectGeminiModel(config.Model)
 
 	return &GeminiProvider{
 		client:    client,
 		maxTokens: config.MaxTokens,
-		model:     config.Model,
+		model:     model,
+	}, nil
+}
+
+func selectGeminiModel(model string) string {
+	switch model {
+	case "gemini-2.5":
+		return "gemini-2.5-flash"
+	case "gemini-3":
+		return "gemini-3-pro"
+	case "gemini-2.5-flash-lite":
+		return "gemini-2.5-flash-lite"
+	default:
+		return "gemini-2.5-flash-lite"
 	}
 }
