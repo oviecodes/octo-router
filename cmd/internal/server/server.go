@@ -7,6 +7,9 @@ import (
 	"llm-router/types"
 	"log"
 	"net/http"
+	"os"
+
+	"go.uber.org/zap"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,25 +18,35 @@ import (
 type App struct {
 	Config *config.Config
 	Router *router.RoundRobinRouter
+	Logger *zap.Logger
 }
 
 func Server() {
 	// Load config once at startup
+	logger, _ := zap.NewDevelopment()
+	defer logger.Sync()
+
+	// logger.Info("This is an info message", zap.String("key", "value"), zap.Int("number", 123))
+
+	logger.Info("Loading configs")
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		logger.Error("Failed to load config", zap.Error(err))
+		os.Exit(1)
 	}
 
 	// Initialize router once at startup
 	llmRouter, err := initializeRouter(cfg)
 	if err != nil {
-		log.Fatalf("Failed to initialize router: %v", err)
+		logger.Error("Failed to initialize router", zap.Error(err))
+		os.Exit(1)
 	}
 
 	// Create app with all dependencies
 	app := &App{
 		Config: cfg,
 		Router: llmRouter,
+		Logger: logger,
 	}
 
 	ginRouter := gin.Default()
