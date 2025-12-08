@@ -29,6 +29,7 @@ func Server() {
 
 	logger.Info("Loading configs")
 	cfg, err := config.LoadConfig()
+
 	if err != nil {
 		logger.Error("Failed to load config", zap.Error(err))
 		os.Exit(1)
@@ -63,14 +64,16 @@ func Server() {
 // initializeRouter creates the LLM router with providers from config
 func initializeRouter(cfg *config.Config) (*router.RoundRobinRouter, error) {
 	enabled := cfg.GetEnabledProviders()
+	modelData := cfg.GetModelData()
+
 	if len(enabled) == 0 {
 		return nil, fmt.Errorf("no enabled providers found in config")
 	}
 
 	routerConfig := types.RouterConfig{
 		Providers: enabled,
-		MaxTokens: int64(cfg.MaxTokens),
-		Model:     cfg.Model,
+		MaxTokens: int64(modelData.MaxToken),
+		Model:     modelData.Model,
 	}
 
 	// Create router with config

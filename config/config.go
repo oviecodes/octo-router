@@ -9,8 +9,13 @@ import (
 
 type Config struct {
 	Providers []types.ProviderConfig `mapstructure:"providers"`
-	MaxTokens int64                  `mapstructure:"models.maxTokens"`
-	Model     string                 `mapstructure:"models.default"`
+	Routing   any                    `mapstructure:"routing"`
+	Models    ModelData              `mapstructure:"models"`
+}
+
+type ModelData struct {
+	Model    string `mapstructure:"default"`
+	MaxToken int64  `mapstructure:"maxTokens"`
 }
 
 // LoadConfig reads the config.yaml file from the project root
@@ -44,6 +49,13 @@ func (c *Config) GetEnabledProviders() []types.ProviderConfig {
 		}
 	}
 	return enabled
+}
+
+func (c *Config) GetModelData() ModelData {
+	return ModelData{
+		Model:    c.Models.Model,
+		MaxToken: c.Models.MaxToken,
+	}
 }
 
 // GetProviderByName returns a specific provider by name
