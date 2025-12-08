@@ -87,13 +87,74 @@ func (app *App) health(c *gin.Context) {
 }
 
 func (app *App) completions(c *gin.Context) {
+	var request types.Completion
+
+	// Bind and validate JSON
+	if err := c.ShouldBindJSON(&request); err != nil {
+		HandleValidationError(c, err)
+		return
+	}
+
+	// Additional business logic validation
+	if err := app.validateCompletionRequest(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	// Log the request
+	app.Logger.Info("Completion request received",
+		zap.Int("message_count", len(request.Messages)),
+		zap.String("model", request.Model),
+	)
+
+	// Select provider
 	provider := app.Router.SelectProvider(c.Request.Context())
 
-	// TODO: Parse request, call provider, return response
+	// TODO: Call provider and return response
+	response, err := provider.Complete(c.Request.Context(), request.Messages)
+	if err != nil {
+		app.Logger.Error("Provider completion failed", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to generate completion",
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"message":  "Provider selected",
+		"message":  response.Content,
+		"role":     response.Role,
 		"provider": fmt.Sprintf("%T", provider),
 	})
+}
+
+// validateCompletionRequest performs additional business logic validation
+func (app *App) validateCompletionRequest(req *types.Completion) error {
+
+	if len(req.Messages) > 0 {
+		// First message should typically be from user
+		if req.Messages[0].Role != "user" && req.Messages[0].Role != "system" {
+			return fmt.Errorf("first message must be from user or system")
+		}
+	}
+
+	if req.Temperature != nil {
+		if *req.Temperature < 0 || *req.Temperature > 2 {
+			return fmt.Errorf("temperature must be between 0 and 2")
+		}
+	}
+
+	// Check total message length (approximate)
+	totalLength := 0
+	for _, msg := range req.Messages {
+		totalLength += len(msg.Content)
+	}
+	if totalLength > 1000000 { // 1MB limit
+		return fmt.Errorf("total message content too large (max 1MB)")
+	}
+
+	return nil
 }
 
 func (app *App) adminConfig(c *gin.Context) {
