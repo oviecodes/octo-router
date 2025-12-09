@@ -115,6 +115,6 @@ func selectOpenAIModel(model string) string {
 	case "gpt-3.5":
 		return openai.ChatModelGPT3_5Turbo
 	default:
-		return openai.ChatModelGPT4
+		return openai.ChatModelGPT4oMini
 	}
 }

@@ -130,6 +130,6 @@ func selectAnthropicModel(model string) anthropic.Model {
 	case "haiku":
 		return anthropic.ModelClaudeHaiku4_5_20251001
 	default:
-		return anthropic.ModelClaude4Sonnet20250514
+		return anthropic.ModelClaude_3_Haiku_20240307
 	}
 }

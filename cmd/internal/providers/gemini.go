@@ -46,9 +46,11 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 	var response *types.Message
 
 	// convert to octo-router message type
-	if len(res.Candidates) > 0 {
-		response = g.convertToRouterMessage(res.Candidates[0].Content.Parts[0].Text)
+	if len(res.Candidates) == 0 {
+		return nil, fmt.Errorf("no response candidates from Gemini")
 	}
+
+	response = g.convertToRouterMessage(res.Candidates[0].Content.Parts[0].Text)
 
 	return response, nil
 }
@@ -79,8 +81,8 @@ func (g *GeminiProvider) convertMessages(messages []types.Message) ([]*genai.Con
 
 func (g *GeminiProvider) convertToRouterMessage(text string) *types.Message {
 	return &types.Message{
-		Content: string(text),
-		Role:    "user",
+		Content: text,
+		Role:    "assistant",
 	}
 }
 
@@ -134,6 +136,6 @@ func selectGeminiModel(model string) string {
 	case "gemini-2.5-flash-lite":
 		return "gemini-2.5-flash-lite"
 	default:
-		return "gemini-2.5-flash-lite"
+		return "gemini-1.5-flash"
 	}
 }
