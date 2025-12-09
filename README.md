@@ -1,4 +1,4 @@
-# OCTO Router
+# Octo Router
 
 A production-ready, open-source LLM router built in Go. Route requests across multiple LLM providers with intelligent load balancing, provider-specific configurations, and comprehensive input validation.
 
