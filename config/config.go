@@ -63,12 +63,15 @@ func LoadConfig() (*Config, error) {
 		config.Providers[i].APIKey = os.ExpandEnv(config.Providers[i].APIKey)
 	}
 
+	config.DeduplicateProviders()
+
 	return &config, nil
 }
 
 // GetEnabledProviders returns only the enabled providers
 func (c *Config) GetEnabledProviders() []types.ProviderConfigWithExtras {
 	var enabled []types.ProviderConfigWithExtras
+
 	for _, provider := range c.Providers {
 		if provider.Enabled {
 
@@ -96,6 +99,22 @@ func (c *Config) GetEnabledProviders() []types.ProviderConfigWithExtras {
 		}
 	}
 	return enabled
+}
+
+func (c *Config) DeduplicateProviders() {
+
+	var dedupConfigs []types.ProviderConfig
+	providerMap := map[string]types.ProviderConfig{}
+
+	for _, provider := range c.Providers {
+		providerMap[provider.Name] = provider
+	}
+
+	for _, provider := range providerMap {
+		dedupConfigs = append(dedupConfigs, provider)
+	}
+
+	c.Providers = dedupConfigs
 }
 
 func (c *Config) GetDetailedModelData() ModelData {
