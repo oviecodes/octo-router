@@ -108,7 +108,7 @@ func selectOpenAIModel(model string) string {
 		return openai.ChatModelGPT5_2025_08_07
 	case "gpt-5.1":
 		return openai.ChatModelGPT5_1ChatLatest
-	case "gpt-40":
+	case "gpt-4o":
 		return openai.ChatModelChatgpt4oLatest
 	case "4o-mini":
 		return openai.ChatModelGPT4oMini
