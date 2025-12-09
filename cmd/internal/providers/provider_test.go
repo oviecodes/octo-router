@@ -35,7 +35,7 @@ var providerConfigs = []types.ProviderConfigWithExtras{
 	},
 }
 
-// creation of providers
+// configure providers
 func TestConfigureProviders(t *testing.T) {
 	providers := ConfigureProviders(providerConfigs)
 
@@ -63,6 +63,27 @@ func TestConfigureProvidersWithUnknownProvider(t *testing.T) {
 	// Should skip unknown providers
 	if len(providers) != 0 {
 		t.Errorf("expected 0 providers for unknown provider type, got %d", len(providers))
+	}
+}
+
+func TestConfigureProvidersWithInvalidAPIKey(t *testing.T) {
+	configs := []types.ProviderConfigWithExtras{
+		{
+			Name:    "openai",
+			APIKey:  "",
+			Enabled: true,
+			Defaults: &types.ProviderExtra{
+				Model:     "gpt-4o-mini",
+				MaxTokens: 1024,
+			},
+		},
+	}
+
+	providers := ConfigureProviders(configs)
+
+	// Should skip invalid providers
+	if len(providers) != 0 {
+		t.Errorf("expected 0 providers with invalid API key, got %d", len(providers))
 	}
 }
 

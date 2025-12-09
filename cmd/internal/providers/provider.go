@@ -22,6 +22,10 @@ func ConfigureProviders(configs []types.ProviderConfigWithExtras) []Provider {
 	for _, config := range configs {
 		switch config.Name {
 		case "openai":
+			if config.APIKey == "" || !config.Enabled {
+				continue
+			}
+
 			provider, err := NewOpenAIProvider(OpenAIConfig{
 				APIKey:    config.APIKey,
 				MaxTokens: config.Defaults.MaxTokens,
@@ -36,6 +40,10 @@ func ConfigureProviders(configs []types.ProviderConfigWithExtras) []Provider {
 			providers = append(providers, provider)
 
 		case "anthropic":
+			if config.APIKey == "" || !config.Enabled {
+				continue
+			}
+
 			provider, err := NewAnthropicProvider(AnthropicConfig{
 				APIKey:    config.APIKey,
 				MaxTokens: config.Defaults.MaxTokens,
@@ -50,6 +58,10 @@ func ConfigureProviders(configs []types.ProviderConfigWithExtras) []Provider {
 			providers = append(providers, provider)
 
 		case "gemini":
+			if config.APIKey == "" || !config.Enabled {
+				continue
+			}
+
 			provider, err := NewGeminiProvider(GeminiConfig{
 				APIKey:    config.APIKey,
 				MaxTokens: config.Defaults.MaxTokens,
