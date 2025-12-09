@@ -25,10 +25,7 @@ func (r *RoundRobinRouter) SelectProvider(ctx context.Context) providers.Provide
 
 func NewRoundRobinRouter(config types.RouterConfig) (*RoundRobinRouter, error) {
 
-	providers := providers.ConfigureProviders(config.Providers, types.ProviderExtra{
-		Model:     config.Model,
-		MaxTokens: int64(config.MaxTokens),
-	})
+	providers := providers.ConfigureProviders(config.Providers)
 
 	return &RoundRobinRouter{
 		current:   0,

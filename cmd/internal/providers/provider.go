@@ -15,7 +15,7 @@ type Provider interface {
 
 var logger = setUpLogger()
 
-func ConfigureProviders(configs []types.ProviderConfig, extra types.ProviderExtra) []Provider {
+func ConfigureProviders(configs []types.ProviderConfigWithExtras) []Provider {
 
 	var providers []Provider
 
@@ -24,8 +24,8 @@ func ConfigureProviders(configs []types.ProviderConfig, extra types.ProviderExtr
 		case "openai":
 			provider, err := NewOpenAIProvider(OpenAIConfig{
 				APIKey:    config.APIKey,
-				MaxTokens: extra.MaxTokens,
-				Model:     extra.Model,
+				MaxTokens: config.Defaults.MaxTokens,
+				Model:     config.Defaults.Model,
 			})
 
 			if err != nil {
@@ -38,8 +38,8 @@ func ConfigureProviders(configs []types.ProviderConfig, extra types.ProviderExtr
 		case "anthropic":
 			provider, err := NewAnthropicProvider(AnthropicConfig{
 				APIKey:    config.APIKey,
-				MaxTokens: extra.MaxTokens,
-				Model:     extra.Model,
+				MaxTokens: config.Defaults.MaxTokens,
+				Model:     config.Defaults.Model,
 			})
 
 			if err != nil {
@@ -52,8 +52,8 @@ func ConfigureProviders(configs []types.ProviderConfig, extra types.ProviderExtr
 		case "gemini":
 			provider, err := NewGeminiProvider(GeminiConfig{
 				APIKey:    config.APIKey,
-				MaxTokens: extra.MaxTokens,
-				Model:     extra.Model,
+				MaxTokens: config.Defaults.MaxTokens,
+				Model:     config.Defaults.Model,
 			})
 
 			if err != nil {

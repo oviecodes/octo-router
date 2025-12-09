@@ -10,3 +10,10 @@ type ProviderExtra struct {
 	Model     string
 	MaxTokens int64
 }
+
+type ProviderConfigWithExtras struct {
+	Name     string
+	APIKey   string
+	Enabled  bool
+	Defaults *ProviderExtra
+}

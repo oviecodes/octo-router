@@ -14,8 +14,13 @@ type Config struct {
 }
 
 type ModelData struct {
-	Model    string `mapstructure:"default"`
-	MaxToken int64  `mapstructure:"maxTokens"`
+	DefaultModels []DefaultModels `mapstructure:"defaults"`
+}
+
+type DefaultModels struct {
+	Name      string `mapstructure:"name"`
+	Model     string `mapstructure:"model"`
+	MaxTokens int64  `mapstructure:"maxTokens"`
 }
 
 // LoadConfig reads the config.yaml file from the project root
@@ -41,21 +46,44 @@ func LoadConfig() (*Config, error) {
 }
 
 // GetEnabledProviders returns only the enabled providers
-func (c *Config) GetEnabledProviders() []types.ProviderConfig {
-	var enabled []types.ProviderConfig
+func (c *Config) GetEnabledProviders() []types.ProviderConfigWithExtras {
+	var enabled []types.ProviderConfigWithExtras
 	for _, provider := range c.Providers {
 		if provider.Enabled {
-			enabled = append(enabled, provider)
+			// get defaults
+			providerDefaults := c.GetDefaultModelDataByName(provider.Name)
+
+			providerWithExtras := types.ProviderConfigWithExtras{
+				Name:    provider.Name,
+				APIKey:  provider.APIKey,
+				Enabled: provider.Enabled,
+				Defaults: &types.ProviderExtra{
+					Model:     providerDefaults.Model,
+					MaxTokens: providerDefaults.MaxTokens,
+				},
+			}
+			enabled = append(enabled, providerWithExtras)
 		}
 	}
 	return enabled
 }
 
-func (c *Config) GetModelData() ModelData {
+func (c *Config) GetDetailedModelData() ModelData {
 	return ModelData{
-		Model:    c.Models.Model,
-		MaxToken: c.Models.MaxToken,
+		DefaultModels: c.Models.DefaultModels,
 	}
+}
+
+func (c *Config) GetDefaultModelDataByName(name string) *types.ProviderExtra {
+	for _, extra := range c.Models.DefaultModels {
+		if extra.Name == name {
+			return &types.ProviderExtra{
+				Model:     extra.Model,
+				MaxTokens: extra.MaxTokens,
+			}
+		}
+	}
+	return nil
 }
 
 // GetProviderByName returns a specific provider by name

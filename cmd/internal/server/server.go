@@ -65,7 +65,10 @@ func Server() {
 func initializeRouter(cfg *config.Config) (*router.RoundRobinRouter, error) {
 	enabled := cfg.GetEnabledProviders()
 	// fmt.Printf("enabled providers %v", enabled)
-	modelData := cfg.GetModelData()
+
+	detailed := cfg.GetDetailedModelData()
+
+	fmt.Printf("detailed Model Data %v \n", detailed)
 
 	if len(enabled) == 0 {
 		return nil, fmt.Errorf("no enabled providers found in config")
@@ -73,8 +76,6 @@ func initializeRouter(cfg *config.Config) (*router.RoundRobinRouter, error) {
 
 	routerConfig := types.RouterConfig{
 		Providers: enabled,
-		MaxTokens: int64(modelData.MaxToken),
-		Model:     modelData.Model,
 	}
 
 	// Create router with config
