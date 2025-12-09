@@ -50,18 +50,26 @@ func (c *Config) GetEnabledProviders() []types.ProviderConfigWithExtras {
 	var enabled []types.ProviderConfigWithExtras
 	for _, provider := range c.Providers {
 		if provider.Enabled {
-			// get defaults
-			providerDefaults := c.GetDefaultModelDataByName(provider.Name)
 
+			providerDefaults := c.GetDefaultModelDataByName(provider.Name)
 			providerWithExtras := types.ProviderConfigWithExtras{
 				Name:    provider.Name,
 				APIKey:  provider.APIKey,
 				Enabled: provider.Enabled,
-				Defaults: &types.ProviderExtra{
+			}
+
+			if providerDefaults != nil {
+				providerWithExtras.Defaults = &types.ProviderExtra{
 					Model:     providerDefaults.Model,
 					MaxTokens: providerDefaults.MaxTokens,
-				},
+				}
+			} else {
+				providerWithExtras.Defaults = &types.ProviderExtra{
+					Model:     "",
+					MaxTokens: 1024,
+				}
 			}
+
 			enabled = append(enabled, providerWithExtras)
 		}
 	}
