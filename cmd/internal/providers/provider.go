@@ -22,7 +22,9 @@ func ConfigureProviders(configs []types.ProviderConfigWithExtras) []Provider {
 	for _, config := range configs {
 		switch config.Name {
 		case "openai":
+
 			if config.APIKey == "" || !config.Enabled {
+				logger.Sugar().Errorf("No API Key for %v provider", config.Name)
 				continue
 			}
 
@@ -40,7 +42,9 @@ func ConfigureProviders(configs []types.ProviderConfigWithExtras) []Provider {
 			providers = append(providers, provider)
 
 		case "anthropic":
+
 			if config.APIKey == "" || !config.Enabled {
+				logger.Sugar().Errorf("No API Key for %v provider", config.Name)
 				continue
 			}
 
@@ -58,7 +62,9 @@ func ConfigureProviders(configs []types.ProviderConfigWithExtras) []Provider {
 			providers = append(providers, provider)
 
 		case "gemini":
+
 			if config.APIKey == "" || !config.Enabled {
+				logger.Sugar().Errorf("No API Key for %v provider", config.Name)
 				continue
 			}
 

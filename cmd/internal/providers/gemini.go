@@ -136,6 +136,6 @@ func selectGeminiModel(model string) string {
 	case "gemini-2.5-flash-lite":
 		return "gemini-2.5-flash-lite"
 	default:
-		return "gemini-1.5-flash"
+		return "gemini-2.5-flash-lite"
 	}
 }

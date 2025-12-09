@@ -24,7 +24,6 @@ func (r *RoundRobinRouter) SelectProvider(ctx context.Context) providers.Provide
 }
 
 func NewRoundRobinRouter(config types.RouterConfig) (*RoundRobinRouter, error) {
-
 	providers := providers.ConfigureProviders(config.Providers)
 
 	return &RoundRobinRouter{

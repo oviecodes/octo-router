@@ -64,7 +64,6 @@ func Server() {
 // initializeRouter creates the LLM router with providers from config
 func initializeRouter(cfg *config.Config) (*router.RoundRobinRouter, error) {
 	enabled := cfg.GetEnabledProviders()
-	// fmt.Printf("enabled providers %v", enabled)
 
 	if len(enabled) == 0 {
 		return nil, fmt.Errorf("no enabled providers found in config")
