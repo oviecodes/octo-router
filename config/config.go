@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"llm-router/types"
 	"llm-router/utils"
+	"os"
 
 	"github.com/spf13/viper"
 )
@@ -28,11 +29,20 @@ var logger = utils.SetUpLogger()
 
 // LoadConfig reads the config.yaml file from the project root
 func LoadConfig() (*Config, error) {
+
+	var configFile string
+
+	if os.Getenv("APP_ENV") == "test" {
+		configFile = "config_test"
+	} else {
+		configFile = "config"
+	}
+
 	// Enable environment variable substitution
 	viper.AutomaticEnv()
 	viper.SetEnvPrefix("")
 
-	viper.SetConfigName("config")
+	viper.SetConfigName(configFile)
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("./")
@@ -46,6 +56,11 @@ func LoadConfig() (*Config, error) {
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	// Expand environment variables in provider API keys
+	for i := range config.Providers {
+		config.Providers[i].APIKey = os.ExpandEnv(config.Providers[i].APIKey)
 	}
 
 	return &config, nil
