@@ -28,6 +28,9 @@ var logger = utils.SetUpLogger()
 
 // LoadConfig reads the config.yaml file from the project root
 func LoadConfig() (*Config, error) {
+	// Enable environment variable substitution
+	viper.AutomaticEnv()
+	viper.SetEnvPrefix("")
 
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
