@@ -66,10 +66,6 @@ func initializeRouter(cfg *config.Config) (*router.RoundRobinRouter, error) {
 	enabled := cfg.GetEnabledProviders()
 	// fmt.Printf("enabled providers %v", enabled)
 
-	detailed := cfg.GetDetailedModelData()
-
-	fmt.Printf("detailed Model Data %v \n", detailed)
-
 	if len(enabled) == 0 {
 		return nil, fmt.Errorf("no enabled providers found in config")
 	}
@@ -108,16 +104,14 @@ func (app *App) completions(c *gin.Context) {
 		return
 	}
 
-	// Log the request
 	app.Logger.Info("Completion request received",
 		zap.Int("message_count", len(request.Messages)),
 		zap.String("model", request.Model),
 	)
 
-	// Select provider
 	provider := app.Router.SelectProvider(c.Request.Context())
 
-	// TODO: Call provider and return response
+	// TODO: Call provider and return response - move to handler file
 	response, err := provider.Complete(c.Request.Context(), request.Messages)
 	if err != nil {
 		app.Logger.Error("Provider completion failed", zap.Error(err))

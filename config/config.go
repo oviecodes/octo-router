@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"llm-router/types"
+	"llm-router/utils"
 
 	"github.com/spf13/viper"
 )
@@ -22,6 +23,8 @@ type DefaultModels struct {
 	Model     string `mapstructure:"model"`
 	MaxTokens int64  `mapstructure:"maxTokens"`
 }
+
+var logger = utils.SetUpLogger()
 
 // LoadConfig reads the config.yaml file from the project root
 func LoadConfig() (*Config, error) {
@@ -64,9 +67,10 @@ func (c *Config) GetEnabledProviders() []types.ProviderConfigWithExtras {
 					MaxTokens: providerDefaults.MaxTokens,
 				}
 			} else {
+				logger.Sugar().Infof("Falling back to system defined defaults for the %v provider", provider.Name)
 				providerWithExtras.Defaults = &types.ProviderExtra{
 					Model:     "",
-					MaxTokens: 1024,
+					MaxTokens: 4096,
 				}
 			}
 

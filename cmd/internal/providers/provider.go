@@ -3,7 +3,7 @@ package providers
 import (
 	"context"
 	"llm-router/types"
-	"os"
+	"llm-router/utils"
 
 	"go.uber.org/zap"
 )
@@ -13,7 +13,7 @@ type Provider interface {
 	CountTokens(ctx context.Context, messages []types.Message) (int, error)
 }
 
-var logger = setUpLogger()
+var logger = utils.SetUpLogger()
 
 func ConfigureProviders(configs []types.ProviderConfigWithExtras) []Provider {
 
@@ -69,15 +69,4 @@ func ConfigureProviders(configs []types.ProviderConfigWithExtras) []Provider {
 
 	}
 	return providers
-}
-
-func setUpLogger() *zap.Logger {
-	switch os.Getenv("APP_ENV") {
-	case "production":
-		log, _ := zap.NewProduction()
-		return log
-	default:
-		log, _ := zap.NewDevelopment()
-		return log
-	}
 }
