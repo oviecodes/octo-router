@@ -11,6 +11,7 @@ import (
 type Provider interface {
 	Complete(ctx context.Context, messages []types.Message) (*types.Message, error)
 	CountTokens(ctx context.Context, messages []types.Message) (int, error)
+	CompleteStream(ctx context.Context, messages []types.Message) (<-chan *types.StreamChunk, error)
 }
 
 var logger = utils.SetUpLogger()

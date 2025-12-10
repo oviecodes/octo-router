@@ -41,6 +41,10 @@ func (o *OpenAIProvider) Complete(ctx context.Context, messages []types.Message)
 	return &response, nil
 }
 
+func (o *OpenAIProvider) CompleteStream(ctx context.Context, messages []types.Message) (<-chan *types.StreamChunk, error) {
+	return nil, nil
+}
+
 func (o *OpenAIProvider) convertMessages(messages []types.Message) []openai.ChatCompletionMessageParamUnion {
 	var openAIMessages []openai.ChatCompletionMessageParamUnion
 

@@ -55,6 +55,10 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 	return response, nil
 }
 
+func (g *GeminiProvider) CompleteStream(ctx context.Context, messages []types.Message) (<-chan *types.StreamChunk, error) {
+	return nil, nil
+}
+
 func (g *GeminiProvider) convertMessages(messages []types.Message) ([]*genai.Content, string) {
 	var geminiMessages []*genai.Content
 	var lastMessage string

@@ -8,6 +8,7 @@ import (
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
 	"github.com/pkoukk/tiktoken-go"
+	"go.uber.org/zap"
 )
 
 type AnthropicConfig struct {
@@ -40,6 +41,66 @@ func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Messa
 	return response, nil
 }
 
+func (a *AnthropicProvider) CompleteStream(ctx context.Context, messages []types.Message) (<-chan *types.StreamChunk, error) {
+	anthropicMessages := a.convertMessages(messages)
+
+	stream := a.client.Messages.NewStreaming(ctx, anthropic.MessageNewParams{
+		MaxTokens: a.maxTokens,
+		Messages:  anthropicMessages,
+		Model:     a.model,
+	})
+
+	chunks := make(chan *types.StreamChunk)
+	message := anthropic.Message{}
+	go func() {
+		defer close(chunks)
+
+		for stream.Next() {
+			event := stream.Current()
+
+			err := message.Accumulate(event)
+			if err != nil {
+				logger.Error("Failed to accumulate message event", zap.Error(err))
+				chunks <- &types.StreamChunk{
+					Content: "",
+					Done:    true,
+					Error:   &err,
+				}
+
+				return
+			}
+
+			switch eventVariant := event.AsAny().(type) {
+			case anthropic.ContentBlockDeltaEvent:
+				switch deltaVariant := eventVariant.Delta.AsAny().(type) {
+				case anthropic.TextDelta:
+					chunks <- &types.StreamChunk{
+						Content: deltaVariant.Text,
+						Done:    false,
+					}
+				}
+
+			case anthropic.MessageStopEvent:
+				chunks <- &types.StreamChunk{
+					Content: "",
+					Done:    true,
+				}
+			}
+		}
+
+		if err := stream.Err(); err != nil {
+			logger.Sugar().Errorf("An error occurred while streaming: %v", err)
+			chunks <- &types.StreamChunk{
+				Content: "",
+				Done:    true,
+				Error:   &err,
+			}
+		}
+	}()
+
+	return chunks, nil
+}
+
 func (a *AnthropicProvider) convertMessages(messages []types.Message) []anthropic.MessageParam {
 	var anthropicMessages []anthropic.MessageParam
 
@@ -58,11 +119,9 @@ func (a *AnthropicProvider) convertMessages(messages []types.Message) []anthropi
 }
 
 func (a *AnthropicProvider) convertToRouterMessage(message *anthropic.Message) *types.Message {
-	// Extract text content from content blocks
 	var content string
 
 	for _, block := range message.Content {
-		// Check the type and extract accordingly
 		switch block.Type {
 		case "text":
 			content = block.Text
@@ -70,7 +129,6 @@ func (a *AnthropicProvider) convertToRouterMessage(message *anthropic.Message) *
 			content = block.Thinking
 		}
 
-		// Stop after finding the first text or thinking block
 		if content != "" {
 			break
 		}

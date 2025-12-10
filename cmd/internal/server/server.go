@@ -2,9 +2,11 @@ package server
 
 import (
 	"fmt"
+	"llm-router/cmd/internal/providers"
 	"llm-router/cmd/internal/router"
 	"llm-router/config"
 	"llm-router/types"
+	"llm-router/utils"
 	"net/http"
 	"os"
 
@@ -20,9 +22,10 @@ type App struct {
 	Logger *zap.Logger
 }
 
+var logger = utils.SetUpLogger()
+
 func Server() {
 	// Load config once at startup
-	logger, _ := zap.NewDevelopment()
 	defer logger.Sync()
 
 	// logger.Info("This is an info message", zap.String("key", "value"), zap.Int("number", 123))
@@ -89,13 +92,11 @@ func (app *App) health(c *gin.Context) {
 func (app *App) completions(c *gin.Context) {
 	var request types.Completion
 
-	// Bind and validate JSON
 	if err := c.ShouldBindJSON(&request); err != nil {
 		HandleValidationError(c, err)
 		return
 	}
 
-	// Additional business logic validation
 	if err := app.validateCompletionRequest(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
@@ -106,32 +107,64 @@ func (app *App) completions(c *gin.Context) {
 	app.Logger.Info("Completion request received",
 		zap.Int("message_count", len(request.Messages)),
 		zap.String("model", request.Model),
+		zap.Bool("stream", request.Stream),
 	)
 
 	provider := app.Router.SelectProvider(c.Request.Context())
 
-	// TODO: Call provider and return response - move to handler file
-	response, err := provider.Complete(c.Request.Context(), request.Messages)
+	if request.Stream {
+		app.handleStreamingCompletion(c, provider, request)
+	} else {
+		// TODO: Call provider and return response - move to handler file
+		response, err := provider.Complete(c.Request.Context(), request.Messages)
+		if err != nil {
+			app.Logger.Error("Provider completion failed", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to generate completion",
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message":  response.Content,
+			"role":     response.Role,
+			"provider": fmt.Sprintf("%T", provider),
+		})
+	}
+
+}
+
+func (app *App) handleStreamingCompletion(c *gin.Context, provider providers.Provider, request types.Completion) {
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Transfer-Encoding", "chunked")
+
+	chunks, err := provider.CompleteStream(c.Request.Context(), request.Messages)
 	if err != nil {
-		app.Logger.Error("Provider completion failed", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to generate completion",
+		app.Logger.Error("Provider streaming failed", zap.Error(err))
+		c.SSEvent("error", gin.H{
+			"error": "Failed to start streaming completion",
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message":  response.Content,
-		"role":     response.Role,
-		"provider": fmt.Sprintf("%T", provider),
-	})
+	// Stream chunks to client
+	for chunk := range chunks {
+		c.SSEvent("message", chunk)
+		c.Writer.Flush()
+
+		if chunk.Done {
+			break
+		}
+	}
 }
 
 // validateCompletionRequest performs additional business logic validation
 func (app *App) validateCompletionRequest(req *types.Completion) error {
 
 	if len(req.Messages) > 0 {
-		// First message should typically be from user
+
 		if req.Messages[0].Role != "user" && req.Messages[0].Role != "system" {
 			return fmt.Errorf("first message must be from user or system")
 		}
