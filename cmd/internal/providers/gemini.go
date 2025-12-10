@@ -6,6 +6,7 @@ import (
 	"llm-router/types"
 
 	"github.com/pkoukk/tiktoken-go"
+	"go.uber.org/zap"
 	"google.golang.org/genai"
 )
 
@@ -56,7 +57,57 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 }
 
 func (g *GeminiProvider) CompleteStream(ctx context.Context, messages []types.Message) (<-chan *types.StreamChunk, error) {
-	return nil, nil
+	geminiMessages, currentMessage := g.convertMessages(messages)
+
+	chat, err := g.client.Chats.Create(
+		ctx,
+		g.model,
+		nil,
+		geminiMessages,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	stream := chat.SendMessageStream(ctx, genai.Part{Text: currentMessage})
+
+	chunks := make(chan *types.StreamChunk)
+
+	go func() {
+		defer close(chunks)
+
+		for chunk, err := range stream {
+			if err != nil {
+				logger.Error("Streaming error occurred", zap.Error(err))
+				chunks <- &types.StreamChunk{
+					Content: "",
+					Done:    true,
+					Error:   &err,
+				}
+				return
+			}
+
+			if len(chunk.Candidates) == 0 ||
+				len(chunk.Candidates[0].Content.Parts) == 0 {
+				continue
+			}
+
+			part := chunk.Candidates[0].Content.Parts[0]
+
+			chunks <- &types.StreamChunk{
+				Content: part.Text,
+				Done:    false,
+			}
+		}
+
+		chunks <- &types.StreamChunk{
+			Content: "",
+			Done:    true,
+		}
+	}()
+
+	return chunks, nil
 }
 
 func (g *GeminiProvider) convertMessages(messages []types.Message) ([]*genai.Content, string) {
