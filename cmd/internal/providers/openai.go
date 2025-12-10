@@ -8,6 +8,7 @@ import (
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
 	"github.com/pkoukk/tiktoken-go"
+	"go.uber.org/zap"
 )
 
 type OpenAIConfig struct {
@@ -42,7 +43,77 @@ func (o *OpenAIProvider) Complete(ctx context.Context, messages []types.Message)
 }
 
 func (o *OpenAIProvider) CompleteStream(ctx context.Context, messages []types.Message) (<-chan *types.StreamChunk, error) {
-	return nil, nil
+	openAIMessages := o.convertMessages(messages)
+
+	stream := o.client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
+		Messages:            openAIMessages,
+		Model:               o.model,
+		MaxCompletionTokens: openai.Opt(o.maxTokens),
+	})
+
+	acc := openai.ChatCompletionAccumulator{}
+	chunks := make(chan *types.StreamChunk)
+
+	go func() {
+		defer close(chunks)
+
+		for stream.Next() {
+			chunk := stream.Current()
+
+			acc.AddChunk(chunk)
+
+			if _, ok := acc.JustFinishedContent(); ok {
+				logger.Debug("Content streaming finished")
+				chunks <- &types.StreamChunk{
+					Content: "",
+					Done:    true,
+				}
+			}
+
+			if refusal, ok := acc.JustFinishedRefusal(); ok {
+				logger.Warn("Content refused by OpenAI", zap.String("refusal", refusal))
+			}
+
+			// when I integrate tools calls
+			if tool, ok := acc.JustFinishedToolCall(); ok {
+				logger.Debug("Tool call finished",
+					zap.Int("index", tool.Index),
+					zap.String("name", tool.Name),
+					zap.String("arguments", tool.Arguments),
+				)
+
+			}
+
+			if len(chunk.Choices) > 0 && chunk.Choices[0].Delta.Content != "" {
+				chunks <- &types.StreamChunk{
+					Content: chunk.Choices[0].Delta.Content,
+					Done:    false,
+				}
+			}
+		}
+
+		if err := stream.Err(); err != nil {
+			logger.Error("Streaming error occurred", zap.Error(err))
+			chunks <- &types.StreamChunk{
+				Content: "",
+				Done:    true,
+				Error:   &err,
+			}
+
+			return
+		}
+
+		// later for token usages stuffs
+		if acc.Usage.TotalTokens > 0 {
+			logger.Debug("Stream completed",
+				zap.Int64("total_tokens", acc.Usage.TotalTokens),
+				zap.Int64("prompt_tokens", acc.Usage.PromptTokens),
+				zap.Int64("completion_tokens", acc.Usage.CompletionTokens),
+			)
+		}
+	}()
+
+	return chunks, nil
 }
 
 func (o *OpenAIProvider) convertMessages(messages []types.Message) []openai.ChatCompletionMessageParamUnion {
