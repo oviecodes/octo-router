@@ -28,6 +28,6 @@ func ConfigureRouterStrategy(routingData *types.RoutingData, config *types.Route
 
 		return router, nil
 	default:
-		return nil, fmt.Errorf("invalid router configuration data")
+		return nil, fmt.Errorf("unsupported routing strategy: %s (supported: round-robin)", routingData.Strategy)
 	}
 }

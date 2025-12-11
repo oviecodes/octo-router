@@ -14,13 +14,13 @@ import (
 
 type ConfigResolver interface {
 	GetConfig(c *gin.Context) *config.Config
-	GetRouter(c *gin.Context) *router.Router
+	GetRouter(c *gin.Context) router.Router
 	GetLogger(c *gin.Context) *zap.Logger
 }
 
 type App struct {
 	Config *config.Config
-	Router *router.Router
+	Router router.Router
 	Logger *zap.Logger
 }
 
@@ -45,10 +45,12 @@ func (m *MultiTenantResolver) GetConfig(c *gin.Context) *config.Config {
 // it might be some other function that checks
 // if a router is already cached for said user, then retrieve
 // if not fetch cfg from database and configure router properly
-func (m *MultiTenantResolver) GetRouter(c *gin.Context) *router.Router {
-	cfg := m.GetConfig(c)
-	router, _ := initializeRouter(cfg)
-	return router
+func (m *MultiTenantResolver) GetRouter(c *gin.Context) router.Router {
+	// cfg := m.GetConfig(c)
+	// router, _ := initializeRouter(cfg)
+	// return router
+
+	return nil
 }
 
 func (m *MultiTenantResolver) GetLogger(c *gin.Context) *zap.Logger {
@@ -59,7 +61,7 @@ func (s *SingleTenantResolver) GetConfig(c *gin.Context) *config.Config {
 	return s.App.Config
 }
 
-func (s *SingleTenantResolver) GetRouter(c *gin.Context) *router.Router {
+func (s *SingleTenantResolver) GetRouter(c *gin.Context) router.Router {
 	return s.App.Router
 }
 
@@ -99,11 +101,9 @@ func SetUpApp() *App {
 	return app
 }
 
-func initializeRouter(cfg *config.Config) (*router.Router, error) {
+func initializeRouter(cfg *config.Config) (router.Router, error) {
 	enabled := cfg.GetEnabledProviders()
 	routerStrategy := cfg.GetRouterStrategy()
-
-	fmt.Printf("All Routing configs %v \n", cfg.GetRouterStrategy())
 
 	if len(enabled) == 0 {
 		return nil, fmt.Errorf("no enabled providers found in config")
@@ -115,5 +115,5 @@ func initializeRouter(cfg *config.Config) (*router.Router, error) {
 
 	router, err := router.ConfigureRouterStrategy(routerStrategy, &routerConfig)
 
-	return &router, err
+	return router, err
 }
