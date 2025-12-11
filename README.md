@@ -314,7 +314,7 @@ export APP_ENV="development"  # or "production"
 
 ## Roadmap
 
-- [ ] Streaming support (Server-Sent Events)
+- Streaming support (Server-Sent Events) [Done]
 - [ ] Cost tracking and reporting
 - [ ] Rate limiting per provider
 - [ ] Circuit breaker for provider failures

@@ -39,6 +39,11 @@ func (m *MultiTenantResolver) GetConfig(c *gin.Context) *config.Config {
 	return nil
 }
 
+// When I implement multi-tenancy
+// it might not be initializeRouter,
+// it might be some other function that checks
+// if a router is already cached for said user, then retriever
+// if not fetch cfg from database and configure routers properly
 func (m *MultiTenantResolver) GetRouter(c *gin.Context) *router.RoundRobinRouter {
 	cfg := m.GetConfig(c)
 	router, _ := initializeRouter(cfg)
