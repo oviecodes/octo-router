@@ -62,7 +62,7 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 		zap.Bool("stream", request.Stream),
 	)
 
-	provider := resolver.GetRouter(nil).SelectProvider(c.Request.Context())
+	provider := resolver.GetRouter(c).SelectProvider(c.Request.Context())
 
 	if request.Stream {
 		HandleStreamingCompletion(resolver, c, provider, request)
