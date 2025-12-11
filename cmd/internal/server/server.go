@@ -1,13 +1,11 @@
 package server
 
 import (
-	"fmt"
-	"llm-router/cmd/internal/providers"
+	"llm-router/cmd/internal/app"
+	"llm-router/cmd/internal/endpoints"
 	"llm-router/cmd/internal/router"
 	"llm-router/config"
-	"llm-router/types"
 	"llm-router/utils"
-	"net/http"
 	"os"
 
 	"go.uber.org/zap"
@@ -25,179 +23,25 @@ type App struct {
 var logger = utils.SetUpLogger()
 
 func Server() {
-	// Load config once at startup
-	defer logger.Sync()
+	// decide start up type
+	var resolver app.ConfigResolver
 
-	// logger.Info("This is an info message", zap.String("key", "value"), zap.Int("number", 123))
-
-	logger.Info("Loading configs")
-	cfg, err := config.LoadConfig()
-
-	if err != nil {
-		logger.Error("Failed to load config", zap.Error(err))
-		os.Exit(1)
-	}
-
-	// Initialize router once at startup
-	llmRouter, err := initializeRouter(cfg)
-	if err != nil {
-		logger.Error("Failed to initialize router", zap.Error(err))
-		os.Exit(1)
-	}
-
-	// Create app with all dependencies
-	app := &App{
-		Config: cfg,
-		Router: llmRouter,
-		Logger: logger,
+	if os.Getenv("MULTI_TENANT") == "true" {
+		resolver = &app.MultiTenantResolver{Logger: logger}
+	} else {
+		singleTenant := app.SetUpApp()
+		resolver = &app.SingleTenantResolver{App: singleTenant}
 	}
 
 	ginRouter := gin.Default()
 
-	ginRouter.GET("/health", app.health)
-	ginRouter.POST("/v1/chat/completions", app.completions)
+	endpoints.SetUpRoutes(resolver, ginRouter)
 
-	ginRouter.POST("/admin/config", app.adminConfig)
-	ginRouter.POST("/admin/providers", app.adminProviders)
+	// Same handler works for both modes!
+
+	// multi-tenant reasoning: all the same functions only difference is how config is gotten,
+	// validated per request API key, user config fetched and used on per request basis - normal web app standard
 
 	logger.Info("Starting server on localhost:8000")
 	ginRouter.Run("localhost:8000")
-}
-
-// initializeRouter creates the LLM router with providers from config
-func initializeRouter(cfg *config.Config) (*router.RoundRobinRouter, error) {
-	enabled := cfg.GetEnabledProviders()
-
-	if len(enabled) == 0 {
-		return nil, fmt.Errorf("no enabled providers found in config")
-	}
-
-	routerConfig := types.RouterConfig{
-		Providers: enabled,
-	}
-
-	// Create router with config
-	// round robin for now,
-	// later (selectRouter) will determine what router type use based on config
-	return router.NewRoundRobinRouter(routerConfig)
-}
-
-func (app *App) health(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"status":    "healthy",
-		"providers": len(app.Config.GetEnabledProviders()),
-	})
-}
-
-func (app *App) completions(c *gin.Context) {
-	var request types.Completion
-
-	if err := c.ShouldBindJSON(&request); err != nil {
-		HandleValidationError(c, err)
-		return
-	}
-
-	if err := app.validateCompletionRequest(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	app.Logger.Info("Completion request received",
-		zap.Int("message_count", len(request.Messages)),
-		zap.String("model", request.Model),
-		zap.Bool("stream", request.Stream),
-	)
-
-	provider := app.Router.SelectProvider(c.Request.Context())
-
-	if request.Stream {
-		app.handleStreamingCompletion(c, provider, request)
-	} else {
-		// TODO: Call provider and return response - move to handler file
-		response, err := provider.Complete(c.Request.Context(), request.Messages)
-		if err != nil {
-			app.Logger.Error("Provider completion failed", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to generate completion",
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"message":  response.Content,
-			"role":     response.Role,
-			"provider": fmt.Sprintf("%T", provider),
-		})
-	}
-
-}
-
-func (app *App) handleStreamingCompletion(c *gin.Context, provider providers.Provider, request types.Completion) {
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("Transfer-Encoding", "chunked")
-
-	chunks, err := provider.CompleteStream(c.Request.Context(), request.Messages)
-	if err != nil {
-		app.Logger.Error("Provider streaming failed", zap.Error(err))
-		c.SSEvent("error", gin.H{
-			"error": "Failed to start streaming completion",
-		})
-		return
-	}
-
-	// Stream chunks to client
-	for chunk := range chunks {
-		c.SSEvent("message", chunk)
-		c.Writer.Flush()
-
-		if chunk.Done {
-			break
-		}
-	}
-}
-
-// validateCompletionRequest performs additional business logic validation
-func (app *App) validateCompletionRequest(req *types.Completion) error {
-
-	if len(req.Messages) > 0 {
-
-		if req.Messages[0].Role != "user" && req.Messages[0].Role != "system" {
-			return fmt.Errorf("first message must be from user or system")
-		}
-	}
-
-	if req.Temperature != nil {
-		if *req.Temperature < 0 || *req.Temperature > 2 {
-			return fmt.Errorf("temperature must be between 0 and 2")
-		}
-	}
-
-	// Check total message length (approximate)
-	totalLength := 0
-	for _, msg := range req.Messages {
-		totalLength += len(msg.Content)
-	}
-	if totalLength > 1000000 { // 1MB limit
-		return fmt.Errorf("total message content too large (max 1MB)")
-	}
-
-	return nil
-}
-
-func (app *App) adminConfig(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"providers": app.Config.Providers,
-	})
-}
-
-func (app *App) adminProviders(c *gin.Context) {
-	enabled := app.Config.GetEnabledProviders()
-	c.JSON(http.StatusOK, gin.H{
-		"enabled": enabled,
-		"count":   len(enabled),
-	})
 }

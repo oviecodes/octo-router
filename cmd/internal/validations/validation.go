@@ -1,4 +1,4 @@
-package server
+package validations
 
 import (
 	"fmt"
