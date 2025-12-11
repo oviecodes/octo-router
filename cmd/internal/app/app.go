@@ -92,6 +92,7 @@ func SetUpApp() *App {
 
 func initializeRouter(cfg *config.Config) (*router.RoundRobinRouter, error) {
 	enabled := cfg.GetEnabledProviders()
+	fmt.Printf("All Routing configs %v \n", cfg.GetRouterStrategy())
 
 	if len(enabled) == 0 {
 		return nil, fmt.Errorf("no enabled providers found in config")

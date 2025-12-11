@@ -11,16 +11,16 @@ import (
 
 type Config struct {
 	Providers []types.ProviderConfig `mapstructure:"providers"`
-	Routing   any                    `mapstructure:"routing"`
+	Routing   types.RoutingData      `mapstructure:"routing"`
 	Models    ModelData              `mapstructure:"models"`
 }
 
 type ModelData struct {
-	DefaultModels []DefaultModels `mapstructure:"defaults"`
+	DefaultModels map[string]DefaultModels `mapstructure:"defaults"`
 }
 
 type DefaultModels struct {
-	Name      string `mapstructure:"name"`
+	// Name      string `mapstructure:"name"`
 	Model     string `mapstructure:"model"`
 	MaxTokens int64  `mapstructure:"maxTokens"`
 }
@@ -101,6 +101,10 @@ func (c *Config) GetEnabledProviders() []types.ProviderConfigWithExtras {
 	return enabled
 }
 
+func (c *Config) GetRouterStrategy() *types.RoutingData {
+	return &c.Routing
+}
+
 func (c *Config) DeduplicateProviders() {
 
 	var dedupConfigs []types.ProviderConfig
@@ -124,15 +128,25 @@ func (c *Config) GetDetailedModelData() ModelData {
 }
 
 func (c *Config) GetDefaultModelDataByName(name string) *types.ProviderExtra {
-	for _, extra := range c.Models.DefaultModels {
-		if extra.Name == name {
-			return &types.ProviderExtra{
-				Model:     extra.Model,
-				MaxTokens: extra.MaxTokens,
-			}
-		}
+	// for _, extra := range c.Models.DefaultModels {
+	// 	if extra.Name == name {
+	// 		return &types.ProviderExtra{
+	// 			Model:     extra.Model,
+	// 			MaxTokens: extra.MaxTokens,
+	// 		}
+	// 	}
+	// }
+	// return nil
+
+	extra, ok := c.Models.DefaultModels[name]
+
+	if !ok {
+		return nil
 	}
-	return nil
+	return &types.ProviderExtra{
+		Model:     extra.Model,
+		MaxTokens: extra.MaxTokens,
+	}
 }
 
 // GetProviderByName returns a specific provider by name

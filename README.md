@@ -56,15 +56,15 @@ providers:
 
 models:
   defaults:
-    - name: openai
+    openai:
       model: "gpt-4o-mini"
       maxTokens: 4096
 
-    - name: anthropic
+    anthropic:
       model: "claude-3-5-sonnet-20241022"
       maxTokens: 4096
 
-    - name: gemini
+    gemini:
       model: "gemini-2.5-flash"
       maxTokens: 8192
 
