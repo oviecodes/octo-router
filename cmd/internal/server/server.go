@@ -3,22 +3,11 @@ package server
 import (
 	"llm-router/cmd/internal/app"
 	"llm-router/cmd/internal/endpoints"
-	"llm-router/cmd/internal/router"
-	"llm-router/config"
 	"llm-router/utils"
 	"os"
 
-	"go.uber.org/zap"
-
 	"github.com/gin-gonic/gin"
 )
-
-// App holds all dependencies that need to be injected into handlers
-type App struct {
-	Config *config.Config
-	Router *router.RoundRobinRouter
-	Logger *zap.Logger
-}
 
 var logger = utils.SetUpLogger()
 

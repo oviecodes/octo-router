@@ -2,42 +2,32 @@ package router
 
 import (
 	"context"
+	"fmt"
 	"llm-router/cmd/internal/providers"
 	"llm-router/types"
 	"llm-router/utils"
-	"os"
-	"sync"
+
+	"go.uber.org/zap"
 )
 
-type RoundRobinRouter struct {
-	providers []providers.Provider
-	mu        sync.Mutex
-	current   int
+type Router interface {
+	SelectProvider(ctx context.Context) providers.Provider
 }
 
 var logger = utils.SetUpLogger()
 
-func (r *RoundRobinRouter) SelectProvider(ctx context.Context) providers.Provider {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func ConfigureRouterStrategy(routingData *types.RoutingData, config *types.RouterConfig) (Router, error) {
+	switch routingData.Strategy {
+	case "round-robin":
+		router, err := NewRoundRobinRouter(*config)
 
-	provider := r.providers[r.current]
-	r.current = (r.current + 1) % len(r.providers)
+		if err != nil {
+			logger.Error("Could not set up the round-robin router %v", zap.Error(err))
+			return nil, err
+		}
 
-	return provider
-}
-
-func NewRoundRobinRouter(config types.RouterConfig) (*RoundRobinRouter, error) {
-	providers := providers.ConfigureProviders(config.Providers)
-
-	// check length  of providers if == 0; throw error and exit the application
-	if len(providers) == 0 {
-		logger.Error("Could not set up any providers")
-		os.Exit(1)
+		return router, nil
+	default:
+		return nil, fmt.Errorf("invalid router configuration data")
 	}
-
-	return &RoundRobinRouter{
-		current:   0,
-		providers: providers,
-	}, nil
 }

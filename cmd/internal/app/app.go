@@ -14,12 +14,12 @@ import (
 
 type ConfigResolver interface {
 	GetConfig(c *gin.Context) *config.Config
-	GetRouter(c *gin.Context) *router.RoundRobinRouter
+	GetRouter(c *gin.Context) *router.Router
 }
 
 type App struct {
 	Config *config.Config
-	Router *router.RoundRobinRouter
+	Router *router.Router
 	Logger *zap.Logger
 }
 
@@ -44,7 +44,7 @@ func (m *MultiTenantResolver) GetConfig(c *gin.Context) *config.Config {
 // it might be some other function that checks
 // if a router is already cached for said user, then retriever
 // if not fetch cfg from database and configure routers properly
-func (m *MultiTenantResolver) GetRouter(c *gin.Context) *router.RoundRobinRouter {
+func (m *MultiTenantResolver) GetRouter(c *gin.Context) *router.Router {
 	cfg := m.GetConfig(c)
 	router, _ := initializeRouter(cfg)
 	return router
@@ -54,7 +54,7 @@ func (s *SingleTenantResolver) GetConfig(c *gin.Context) *config.Config {
 	return s.App.Config
 }
 
-func (s *SingleTenantResolver) GetRouter(c *gin.Context) *router.RoundRobinRouter {
+func (s *SingleTenantResolver) GetRouter(c *gin.Context) *router.Router {
 	return s.App.Router
 }
 
@@ -90,8 +90,10 @@ func SetUpApp() *App {
 	return app
 }
 
-func initializeRouter(cfg *config.Config) (*router.RoundRobinRouter, error) {
+func initializeRouter(cfg *config.Config) (*router.Router, error) {
 	enabled := cfg.GetEnabledProviders()
+	routerStrategy := cfg.GetRouterStrategy()
+
 	fmt.Printf("All Routing configs %v \n", cfg.GetRouterStrategy())
 
 	if len(enabled) == 0 {
@@ -102,8 +104,12 @@ func initializeRouter(cfg *config.Config) (*router.RoundRobinRouter, error) {
 		Providers: enabled,
 	}
 
+	router, err := router.ConfigureRouterStrategy(routerStrategy, &routerConfig)
+
+	return &router, err
+
 	// Create router with config
 	// round robin for now,
 	// later (selectRouter) will determine what router type use based on config
-	return router.NewRoundRobinRouter(routerConfig)
+	// return router.NewRoundRobinRouter(routerConfig)
 }
