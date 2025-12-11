@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"llm-router/types"
+	"time"
 
 	"github.com/pkoukk/tiktoken-go"
 	"go.uber.org/zap"
@@ -14,16 +15,20 @@ type GeminiConfig struct {
 	APIKey    string
 	MaxTokens int64
 	Model     string
+	Timeout   time.Duration
 }
 
 type GeminiProvider struct {
 	client    *genai.Client
 	maxTokens int64
 	model     string
+	timeout   time.Duration
 }
 
 func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
 
+	ctx, cancel := context.WithTimeout(ctx, g.timeout)
+	defer cancel()
 	//convert to geminiMessageformat
 	geminiMessages, currentMessage := g.convertMessages(messages)
 
@@ -57,6 +62,9 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 }
 
 func (g *GeminiProvider) CompleteStream(ctx context.Context, messages []types.Message) (<-chan *types.StreamChunk, error) {
+	ctx, cancel := context.WithTimeout(ctx, g.timeout)
+	defer cancel()
+
 	geminiMessages, currentMessage := g.convertMessages(messages)
 
 	chat, err := g.client.Chats.Create(
@@ -175,10 +183,16 @@ func NewGeminiProvider(config GeminiConfig) (*GeminiProvider, error) {
 
 	model := selectGeminiModel(config.Model)
 
+	timeout := config.Timeout
+	if config.Timeout == 0 {
+		timeout = 30 * time.Second
+	}
+
 	return &GeminiProvider{
 		client:    client,
 		maxTokens: config.MaxTokens,
 		model:     model,
+		timeout:   timeout,
 	}, nil
 }
 

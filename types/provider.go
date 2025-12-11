@@ -16,4 +16,6 @@ type ProviderConfigWithExtras struct {
 	APIKey   string
 	Enabled  bool
 	Defaults *ProviderExtra
+	Timeout  int
+	Limits   ProviderLimits
 }

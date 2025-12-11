@@ -4,6 +4,7 @@ import (
 	"context"
 	"llm-router/types"
 	"llm-router/utils"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -29,10 +30,14 @@ func ConfigureProviders(configs []types.ProviderConfigWithExtras) []Provider {
 				continue
 			}
 
+			timeoutMs := config.Timeout
+			timeout := time.Duration(timeoutMs) * (time.Millisecond)
+
 			provider, err := NewOpenAIProvider(OpenAIConfig{
 				APIKey:    config.APIKey,
 				MaxTokens: config.Defaults.MaxTokens,
 				Model:     config.Defaults.Model,
+				Timeout:   timeout,
 			})
 
 			if err != nil {
@@ -49,10 +54,14 @@ func ConfigureProviders(configs []types.ProviderConfigWithExtras) []Provider {
 				continue
 			}
 
+			timeoutMs := config.Timeout
+			timeout := time.Duration(timeoutMs) * time.Millisecond
+
 			provider, err := NewAnthropicProvider(AnthropicConfig{
 				APIKey:    config.APIKey,
 				MaxTokens: config.Defaults.MaxTokens,
 				Model:     config.Defaults.Model,
+				Timeout:   timeout,
 			})
 
 			if err != nil {
@@ -69,10 +78,14 @@ func ConfigureProviders(configs []types.ProviderConfigWithExtras) []Provider {
 				continue
 			}
 
+			timeoutMs := config.Timeout
+			timeout := time.Duration(timeoutMs) * time.Millisecond
+
 			provider, err := NewGeminiProvider(GeminiConfig{
 				APIKey:    config.APIKey,
 				MaxTokens: config.Defaults.MaxTokens,
 				Model:     config.Defaults.Model,
+				Timeout:   timeout,
 			})
 
 			if err != nil {

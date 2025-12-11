@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"llm-router/types"
+	"time"
 
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
@@ -15,15 +16,20 @@ type OpenAIConfig struct {
 	APIKey    string
 	MaxTokens int64
 	Model     string
+	Timeout   time.Duration
 }
 
 type OpenAIProvider struct {
 	maxTokens int64
 	client    openai.Client
 	model     string
+	timeout   time.Duration
 }
 
 func (o *OpenAIProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
+
+	ctx, cancel := context.WithTimeout(ctx, o.timeout)
+	defer cancel()
 
 	openAIMessages := o.convertMessages(messages)
 
@@ -43,6 +49,9 @@ func (o *OpenAIProvider) Complete(ctx context.Context, messages []types.Message)
 }
 
 func (o *OpenAIProvider) CompleteStream(ctx context.Context, messages []types.Message) (<-chan *types.StreamChunk, error) {
+	ctx, cancel := context.WithTimeout(ctx, o.timeout)
+	defer cancel()
+
 	openAIMessages := o.convertMessages(messages)
 
 	stream := o.client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{

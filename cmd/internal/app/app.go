@@ -98,12 +98,16 @@ func SetUpApp() *App {
 		Logger: logger,
 	}
 
+	app.Config.GetResilienceConfigData()
+
 	return app
 }
 
 func initializeRouter(cfg *config.Config) (router.Router, error) {
 	enabled := cfg.GetEnabledProviders()
 	routerStrategy := cfg.GetRouterStrategy()
+
+	fmt.Printf("All Routing configs %v \n", *cfg)
 
 	if len(enabled) == 0 {
 		return nil, fmt.Errorf("no enabled providers found in config")

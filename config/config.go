@@ -10,19 +10,11 @@ import (
 )
 
 type Config struct {
-	Providers []types.ProviderConfig `mapstructure:"providers"`
-	Routing   types.RoutingData      `mapstructure:"routing"`
-	Models    ModelData              `mapstructure:"models"`
-}
-
-type ModelData struct {
-	DefaultModels map[string]DefaultModels `mapstructure:"defaults"`
-}
-
-type DefaultModels struct {
-	// Name      string `mapstructure:"name"`
-	Model     string `mapstructure:"model"`
-	MaxTokens int64  `mapstructure:"maxTokens"`
+	Providers  []types.ProviderConfig `mapstructure:"providers"`
+	Routing    types.RoutingData      `mapstructure:"routing"`
+	Models     types.ModelData        `mapstructure:"models"`
+	Resilience types.ResilienceData   `mapstructure:"resilience"`
+	Limits     types.LimitsData       `mapstructure:"limits"`
 }
 
 var logger = utils.SetUpLogger()
@@ -75,11 +67,13 @@ func (c *Config) GetEnabledProviders() []types.ProviderConfigWithExtras {
 	for _, provider := range c.Providers {
 		if provider.Enabled {
 
-			providerDefaults := c.GetDefaultModelDataByName(provider.Name)
+			providerDefaults := c.GetDefaultModelConfigDataByName(provider.Name)
 			providerWithExtras := types.ProviderConfigWithExtras{
 				Name:    provider.Name,
 				APIKey:  provider.APIKey,
 				Enabled: provider.Enabled,
+				Timeout: c.Resilience.Timeout,
+				Limits:  c.GetLimitsConfigDataByName(provider.Name),
 			}
 
 			if providerDefaults != nil {
@@ -121,13 +115,35 @@ func (c *Config) DeduplicateProviders() {
 	c.Providers = dedupConfigs
 }
 
-func (c *Config) GetDetailedModelData() ModelData {
-	return ModelData{
+func (c *Config) GetDetailedModelConfigData() types.ModelData {
+	return types.ModelData{
 		DefaultModels: c.Models.DefaultModels,
 	}
 }
 
-func (c *Config) GetDefaultModelDataByName(name string) *types.ProviderExtra {
+func (c *Config) GetResilienceConfigData() types.ResilienceData {
+	return types.ResilienceData{
+		Timeout:              c.Resilience.Timeout,
+		RetriesConfig:        c.Resilience.RetriesConfig,
+		CircuitBreakerConfig: c.Resilience.CircuitBreakerConfig,
+	}
+}
+
+func (c *Config) GetLimitsConfigData() *types.LimitsData {
+	return &types.LimitsData{
+		RequestsPerMinute: c.Limits.RequestsPerMinute,
+		RequestsPerDay:    c.Limits.RequestsPerDay,
+		DailyBudget:       c.Limits.DailyBudget,
+		AlertThreshold:    c.Limits.AlertThreshold,
+		Providers:         c.Limits.Providers,
+	}
+}
+
+func (c *Config) GetLimitsConfigDataByName(name string) types.ProviderLimits {
+	return c.Limits.Providers[name]
+}
+
+func (c *Config) GetDefaultModelConfigDataByName(name string) *types.ProviderExtra {
 	// for _, extra := range c.Models.DefaultModels {
 	// 	if extra.Name == name {
 	// 		return &types.ProviderExtra{

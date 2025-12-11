@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"llm-router/types"
+	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -15,15 +16,21 @@ type AnthropicConfig struct {
 	APIKey    string
 	MaxTokens int64
 	Model     string
+	Timeout   time.Duration
 }
 
 type AnthropicProvider struct {
 	client    anthropic.Client
 	model     anthropic.Model
 	maxTokens int64
+	timeout   time.Duration
 }
 
 func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
+
+	ctx, cancel := context.WithTimeout(ctx, a.timeout)
+	defer cancel()
+
 	// Send all messages in the conversation
 	anthropicMessages := a.convertMessages(messages)
 
@@ -34,6 +41,9 @@ func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Messa
 	})
 
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("anthropic provider timeout after %v: %w", a.timeout, err)
+		}
 		return nil, err
 	}
 
@@ -42,6 +52,9 @@ func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Messa
 }
 
 func (a *AnthropicProvider) CompleteStream(ctx context.Context, messages []types.Message) (<-chan *types.StreamChunk, error) {
+	ctx, cancel := context.WithTimeout(ctx, a.timeout)
+	defer cancel()
+
 	anthropicMessages := a.convertMessages(messages)
 
 	stream := a.client.Messages.NewStreaming(ctx, anthropic.MessageNewParams{
@@ -172,10 +185,16 @@ func NewAnthropicProvider(config AnthropicConfig) (*AnthropicProvider, error) {
 
 	model := selectAnthropicModel(config.Model)
 
+	timeout := config.Timeout
+	if timeout == 0 {
+		timeout = 30 * time.Second
+	}
+
 	return &AnthropicProvider{
 		client:    client,
 		model:     model,
 		maxTokens: int64(config.MaxTokens),
+		timeout:   timeout,
 	}, nil
 }
 
