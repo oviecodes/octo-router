@@ -14,10 +14,7 @@ func TestGetEnabledProviders(t *testing.T) {
 			{Name: "gemini", APIKey: "key3", Enabled: true},
 		},
 		Models: ModelData{
-			// DefaultModels: DefaultModels{
-			// 	{Name: "openai", Model: "gpt-4", MaxTokens: 4096},
-			// 	{Name: "gemini", Model: "gemini-2.5-flash", MaxTokens: 8192},
-			// },
+
 			DefaultModels: map[string]DefaultModels{
 				"openai": {Model: "gpt-4", MaxTokens: 4096},
 				"gemini": {Model: "gemini-2.5-flash", MaxTokens: 8192},
@@ -39,10 +36,7 @@ func TestGetEnabledProviders(t *testing.T) {
 func TestGetDefaultModelDataByName(t *testing.T) {
 	cfg := &Config{
 		Models: ModelData{
-			// DefaultModels: []DefaultModels{
-			// 	{Name: "openai", Model: "gpt-4", MaxTokens: 4096},
-			// 	{Name: "anthropic", Model: "claude-3", MaxTokens: 4096},
-			// },
+
 			DefaultModels: map[string]DefaultModels{
 				"openai": {Model: "gpt-4", MaxTokens: 4096},
 				"gemini": {Model: "gemini-2.5-flash", MaxTokens: 8192},
@@ -86,7 +80,4 @@ func TestEnvironmentVariableSubstitution(t *testing.T) {
 		t.Errorf("API keys not loaded from environment, expected %s but recieved %s", "test-key-123", enabled[0].APIKey)
 	}
 
-	// This would require creating a test config file
-	// or using viper's ability to set values programmatically
-	// Left as exercise - depends on your setup
 }

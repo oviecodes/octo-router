@@ -6,14 +6,11 @@ import (
 	"llm-router/cmd/internal/providers"
 	"llm-router/cmd/internal/validations"
 	"llm-router/types"
-	"llm-router/utils"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
-
-var logger = utils.SetUpLogger()
 
 func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, provider providers.Provider, request types.Completion) {
 	c.Header("Content-Type", "text/event-stream")
@@ -23,7 +20,7 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 
 	chunks, err := provider.CompleteStream(c.Request.Context(), request.Messages)
 	if err != nil {
-		logger.Error("Provider streaming failed", zap.Error(err))
+		resolver.GetLogger(c).Error("Provider streaming failed", zap.Error(err))
 		c.SSEvent("error", gin.H{
 			"error": "Failed to start streaming completion",
 		})
@@ -56,7 +53,7 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 		return
 	}
 
-	logger.Info("Completion request received",
+	resolver.GetLogger(c).Info("Completion request received",
 		zap.Int("message_count", len(request.Messages)),
 		zap.String("model", request.Model),
 		zap.Bool("stream", request.Stream),
@@ -71,7 +68,7 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 		// TODO: Call provider and return response - move to handler file
 		response, err := provider.Complete(c.Request.Context(), request.Messages)
 		if err != nil {
-			logger.Error("Provider completion failed", zap.Error(err))
+			resolver.GetLogger(c).Error("Provider completion failed", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed to generate completion",
 			})

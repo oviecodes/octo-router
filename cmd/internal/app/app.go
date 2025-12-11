@@ -15,6 +15,7 @@ import (
 type ConfigResolver interface {
 	GetConfig(c *gin.Context) *config.Config
 	GetRouter(c *gin.Context) *router.Router
+	GetLogger(c *gin.Context) *zap.Logger
 }
 
 type App struct {
@@ -42,12 +43,16 @@ func (m *MultiTenantResolver) GetConfig(c *gin.Context) *config.Config {
 // When I implement multi-tenancy
 // it might not be initializeRouter,
 // it might be some other function that checks
-// if a router is already cached for said user, then retriever
-// if not fetch cfg from database and configure routers properly
+// if a router is already cached for said user, then retrieve
+// if not fetch cfg from database and configure router properly
 func (m *MultiTenantResolver) GetRouter(c *gin.Context) *router.Router {
 	cfg := m.GetConfig(c)
 	router, _ := initializeRouter(cfg)
 	return router
+}
+
+func (m *MultiTenantResolver) GetLogger(c *gin.Context) *zap.Logger {
+	return m.Logger
 }
 
 func (s *SingleTenantResolver) GetConfig(c *gin.Context) *config.Config {
@@ -56,6 +61,10 @@ func (s *SingleTenantResolver) GetConfig(c *gin.Context) *config.Config {
 
 func (s *SingleTenantResolver) GetRouter(c *gin.Context) *router.Router {
 	return s.App.Router
+}
+
+func (s *SingleTenantResolver) GetLogger(c *gin.Context) *zap.Logger {
+	return s.App.Logger
 }
 
 var logger = utils.SetUpLogger()
@@ -107,9 +116,4 @@ func initializeRouter(cfg *config.Config) (*router.Router, error) {
 	router, err := router.ConfigureRouterStrategy(routerStrategy, &routerConfig)
 
 	return &router, err
-
-	// Create router with config
-	// round robin for now,
-	// later (selectRouter) will determine what router type use based on config
-	// return router.NewRoundRobinRouter(routerConfig)
 }
