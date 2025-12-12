@@ -70,6 +70,13 @@ models:
 
 routing:
   strategy: round-robin
+
+resilience:
+  timeout: 30000
+
+cache:
+  enabled: true
+  ttl: 3600
 ```
 
 **Note**: Use environment variables for API keys. The router supports `${VAR_NAME}` syntax for environment variable substitution.
