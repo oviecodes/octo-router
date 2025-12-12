@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"llm-router/cmd/internal/cache"
 	"llm-router/cmd/internal/router"
 	"llm-router/config"
 	"llm-router/types"
@@ -16,12 +17,14 @@ type ConfigResolver interface {
 	GetConfig(c *gin.Context) *config.Config
 	GetRouter(c *gin.Context) router.Router
 	GetLogger(c *gin.Context) *zap.Logger
+	GetCache(c *gin.Context) cache.Cache
 }
 
 type App struct {
 	Config *config.Config
 	Router router.Router
 	Logger *zap.Logger
+	Cache  cache.Cache
 }
 
 type SingleTenantResolver struct {
@@ -57,6 +60,10 @@ func (m *MultiTenantResolver) GetLogger(c *gin.Context) *zap.Logger {
 	return m.Logger
 }
 
+func (m *MultiTenantResolver) GetCache(c *gin.Context) cache.Cache {
+	return nil
+}
+
 func (s *SingleTenantResolver) GetConfig(c *gin.Context) *config.Config {
 	return s.App.Config
 }
@@ -67,6 +74,10 @@ func (s *SingleTenantResolver) GetRouter(c *gin.Context) router.Router {
 
 func (s *SingleTenantResolver) GetLogger(c *gin.Context) *zap.Logger {
 	return s.App.Logger
+}
+
+func (s *SingleTenantResolver) GetCache(c *gin.Context) cache.Cache {
+	return s.App.Cache
 }
 
 var logger = utils.SetUpLogger()
@@ -91,14 +102,25 @@ func SetUpApp() *App {
 		os.Exit(1)
 	}
 
+	var cacheInstance cache.Cache
+
+	if cfg.CacheConfig.Enabled {
+		cacheInstance, err = cache.NewCacheClient(cfg.CacheConfig)
+
+		if err != nil {
+			logger.Error("Failed to initialize cache", zap.Error(err))
+		}
+	}
+
+	fmt.Printf("Current cache instance %v \n", cacheInstance)
+
 	// Create app with all dependencies
 	app := &App{
 		Config: cfg,
 		Router: llmRouter,
 		Logger: logger,
+		Cache:  cacheInstance,
 	}
-
-	app.Config.GetResilienceConfigData()
 
 	return app
 }
@@ -107,7 +129,7 @@ func initializeRouter(cfg *config.Config) (router.Router, error) {
 	enabled := cfg.GetEnabledProviders()
 	routerStrategy := cfg.GetRouterStrategy()
 
-	fmt.Printf("All Routing configs %v \n", *cfg)
+	// fmt.Printf("All Routing configs %v \n", *cfg)
 
 	if len(enabled) == 0 {
 		return nil, fmt.Errorf("no enabled providers found in config")

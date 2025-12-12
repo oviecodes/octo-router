@@ -27,3 +27,9 @@ type LimitsData struct {
 type ProviderLimits struct {
 	RequestsPerMinute int `mapstructure:"requestsPerMinute"`
 }
+
+type CacheData struct {
+	Enabled  bool              `mapstructure:"enabled"`
+	Ttl      int               `mapstructure:"ttl"`
+	Semantic map[string]string `mapstructure:"semantic"`
+}

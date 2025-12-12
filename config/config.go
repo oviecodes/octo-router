@@ -10,11 +10,12 @@ import (
 )
 
 type Config struct {
-	Providers  []types.ProviderConfig `mapstructure:"providers"`
-	Routing    types.RoutingData      `mapstructure:"routing"`
-	Models     types.ModelData        `mapstructure:"models"`
-	Resilience types.ResilienceData   `mapstructure:"resilience"`
-	Limits     types.LimitsData       `mapstructure:"limits"`
+	Providers   []types.ProviderConfig `mapstructure:"providers"`
+	Routing     types.RoutingData      `mapstructure:"routing"`
+	Models      types.ModelData        `mapstructure:"models"`
+	Resilience  types.ResilienceData   `mapstructure:"resilience"`
+	Limits      types.LimitsData       `mapstructure:"limits"`
+	CacheConfig types.CacheData        `mapstructure:"cache"`
 }
 
 var logger = utils.SetUpLogger()
@@ -165,7 +166,6 @@ func (c *Config) GetDefaultModelConfigDataByName(name string) *types.ProviderExt
 	}
 }
 
-// GetProviderByName returns a specific provider by name
 func (c *Config) GetProviderByName(name string) *types.ProviderConfig {
 	for _, provider := range c.Providers {
 		if provider.Name == name {
@@ -173,4 +173,8 @@ func (c *Config) GetProviderByName(name string) *types.ProviderConfig {
 		}
 	}
 	return nil
+}
+
+func (c *Config) GetCacheConfigData() *types.CacheData {
+	return &c.CacheConfig
 }

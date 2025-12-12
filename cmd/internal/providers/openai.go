@@ -179,10 +179,16 @@ func NewOpenAIProvider(config OpenAIConfig) (*OpenAIProvider, error) {
 
 	model := selectOpenAIModel(config.Model)
 
+	timeout := config.Timeout
+	if timeout == 0 {
+		timeout = 30 * time.Second
+	}
+
 	return &OpenAIProvider{
 		client:    client,
 		model:     model,
 		maxTokens: int64(config.MaxTokens),
+		timeout:   timeout,
 	}, nil
 }
 
