@@ -67,6 +67,9 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 	} else {
 		// TODO: Call provider and return response - move to handler file
 		response, err := provider.Complete(c.Request.Context(), request.Messages)
+
+		// fmt.Printf("error from %T provider: %v", provider, err)
+
 		if err != nil {
 			resolver.GetLogger(c).Error("Provider completion failed", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{

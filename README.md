@@ -322,6 +322,7 @@ export APP_ENV="development"  # or "production"
 ## Roadmap
 
 - Streaming support (Server-Sent Events) [Done]
+- [ ] Proper error handling for different types of Error [In-progress]
 - [ ] Cost tracking and reporting
 - [ ] Rate limiting per provider
 - [ ] Circuit breaker for provider failures

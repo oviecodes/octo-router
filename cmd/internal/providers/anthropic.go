@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"llm-router/types"
 	"time"
@@ -41,10 +42,21 @@ func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Messa
 	})
 
 	if err != nil {
-		if ctx.Err() == context.DeadlineExceeded {
-			return nil, fmt.Errorf("anthropic provider timeout after %v: %w", a.timeout, err)
+		// Translate to domain error
+		translatedErr := TranslateAnthropicError(err)
+
+		// Log with provider error details
+		var providerErr *ProviderError
+		if errors.As(translatedErr, &providerErr) {
+			logger.Error("Anthropic request failed",
+				zap.String("error_type", providerErr.Type.String()),
+				zap.Int("status_code", providerErr.StatusCode),
+				zap.Bool("retryable", providerErr.Retryable),
+				zap.Error(providerErr.OriginalError),
+			)
 		}
-		return nil, err
+
+		return nil, translatedErr
 	}
 
 	response := a.convertToRouterMessage(message)
