@@ -2,7 +2,6 @@ package resilience
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"llm-router/cmd/internal/providers"
 	"math"
@@ -10,10 +9,6 @@ import (
 
 	"go.uber.org/zap"
 )
-
-// type RetrySetup interface {
-// 	Retry(handler func() (*types.Message, error))
-// }
 
 type Retry struct {
 	config config
@@ -48,50 +43,18 @@ func Do[T any](ctx context.Context, r *Retry, handler func(context.Context) (T, 
 
 		lastErr = err
 
-		// Check if error is retryable using our domain error system
 		if !providers.IsRetryableError(err) {
-			// Log additional details if it's a ProviderError
-			var providerErr *providers.ProviderError
-			if errors.As(err, &providerErr) {
-				r.logger.Debug("Error not retryable, failing immediately",
-					zap.String("error_type", providerErr.Type.String()),
-					zap.String("provider", providerErr.ProviderName),
-					zap.Int("status_code", providerErr.StatusCode),
-					zap.Int("attempt", attempt+1),
-					zap.Error(err),
-				)
-			} else {
-				r.logger.Debug("Error not retryable, failing immediately",
-					zap.Error(err),
-					zap.Int("attempt", attempt+1),
-				)
-			}
 			return result, fmt.Errorf("non-retryable error: %w", err)
 		}
 
 		if attempt < r.config.maxAttempts-1 {
 			delay := r.calculateBackoff(attempt)
 
-			// Log retry with provider error details if available
-			var providerErr *providers.ProviderError
-			if errors.As(err, &providerErr) {
-				r.logger.Debug("Retrying after error",
-					zap.String("error_type", providerErr.Type.String()),
-					zap.String("provider", providerErr.ProviderName),
-					zap.Int("status_code", providerErr.StatusCode),
-					zap.Int("attempt", attempt+1),
-					zap.Int("maxAttempts", r.config.maxAttempts),
-					zap.Duration("delay", delay),
-					zap.Error(err),
-				)
-			} else {
-				r.logger.Debug("Retrying after error",
-					zap.Error(err),
-					zap.Int("attempt", attempt+1),
-					zap.Int("maxAttempts", r.config.maxAttempts),
-					zap.Duration("delay", delay),
-				)
-			}
+			r.logger.Debug("Retrying after error",
+				zap.Int("attempt", attempt+1),
+				zap.Int("maxAttempts", r.config.maxAttempts),
+				zap.Duration("delay", delay),
+			)
 
 			select {
 			case <-time.After(delay):
