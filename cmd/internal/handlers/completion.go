@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"llm-router/cmd/internal/app"
 	"llm-router/cmd/internal/providers"
+	"llm-router/cmd/internal/resilience"
 	"llm-router/cmd/internal/validations"
 	"llm-router/types"
 	"net/http"
@@ -19,6 +21,8 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 	c.Header("Transfer-Encoding", "chunked")
 
 	chunks, err := provider.CompleteStream(c.Request.Context(), request.Messages)
+
+	fmt.Printf("Streaming error %v \n", err)
 	if err != nil {
 		resolver.GetLogger(c).Error("Provider streaming failed", zap.Error(err))
 		c.SSEvent("error", gin.H{
@@ -29,6 +33,14 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 
 	// Stream chunks to client
 	for chunk := range chunks {
+		if chunk.Error != nil {
+			c.SSEvent("error", gin.H{
+				"error": chunk.Error.Error(),
+			})
+			c.Writer.Flush()
+			break
+		}
+
 		c.SSEvent("message", chunk)
 		c.Writer.Flush()
 
@@ -40,6 +52,7 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 
 func Completions(resolver app.ConfigResolver, c *gin.Context) {
 	var request types.Completion
+	retry := resilience.NewRetryHandler(map[string]int{}, resolver.GetLogger(c))
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		validations.HandleValidationError(c, err)
@@ -65,15 +78,17 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 	if request.Stream {
 		HandleStreamingCompletion(resolver, c, provider, request)
 	} else {
-		// TODO: Call provider and return response - move to handler file
-		response, err := provider.Complete(c.Request.Context(), request.Messages)
 
-		// fmt.Printf("error from %T provider: %v", provider, err)
+		response, err := resilience.Do(c, retry, func(ctx context.Context) (*types.Message, error) {
+			return provider.Complete(c.Request.Context(), request.Messages)
+		})
+
+		fmt.Printf("error from %T provider: %v", provider, err)
 
 		if err != nil {
 			resolver.GetLogger(c).Error("Provider completion failed", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to generate completion",
+				"error": err.Error(),
 			})
 			return
 		}

@@ -116,7 +116,7 @@ func (g *GeminiProvider) CompleteStream(ctx context.Context, messages []types.Me
 				chunks <- &types.StreamChunk{
 					Content: "",
 					Done:    true,
-					Error:   &err,
+					Error:   err,
 				}
 				return
 			}

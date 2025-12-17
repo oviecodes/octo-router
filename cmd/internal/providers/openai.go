@@ -117,10 +117,12 @@ func (o *OpenAIProvider) CompleteStream(ctx context.Context, messages []types.Me
 
 		if err := stream.Err(); err != nil {
 			logger.Error("Streaming error occurred", zap.Error(err))
+			providerErr := TranslateOpenAIError(err)
+
 			chunks <- &types.StreamChunk{
 				Content: "",
 				Done:    true,
-				Error:   &err,
+				Error:   providerErr,
 			}
 
 			return

@@ -89,7 +89,7 @@ func (a *AnthropicProvider) CompleteStream(ctx context.Context, messages []types
 				chunks <- &types.StreamChunk{
 					Content: "",
 					Done:    true,
-					Error:   &err,
+					Error:   err,
 				}
 
 				return
@@ -118,7 +118,7 @@ func (a *AnthropicProvider) CompleteStream(ctx context.Context, messages []types
 			chunks <- &types.StreamChunk{
 				Content: "",
 				Done:    true,
-				Error:   &err,
+				Error:   err,
 			}
 		}
 	}()
