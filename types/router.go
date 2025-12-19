@@ -7,5 +7,7 @@ type RoutingData struct {
 }
 
 type RouterConfig struct {
-	Providers []ProviderConfigWithExtras
+	Providers            []ProviderConfigWithExtras
+	CircuitBreakerConfig map[string]int
+	RetryConfig          map[string]int
 }

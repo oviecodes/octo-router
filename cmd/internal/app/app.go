@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"llm-router/cmd/internal/cache"
+	"llm-router/cmd/internal/resilience"
 	"llm-router/cmd/internal/router"
 	"llm-router/config"
 	"llm-router/types"
@@ -18,6 +19,7 @@ type ConfigResolver interface {
 	GetRouter(c *gin.Context) router.Router
 	GetLogger(c *gin.Context) *zap.Logger
 	GetCache(c *gin.Context) cache.Cache
+	GetRetry(c *gin.Context) *resilience.Retry
 }
 
 type App struct {
@@ -25,6 +27,7 @@ type App struct {
 	Router router.Router
 	Logger *zap.Logger
 	Cache  cache.Cache
+	Retry  *resilience.Retry
 }
 
 type SingleTenantResolver struct {
@@ -64,6 +67,10 @@ func (m *MultiTenantResolver) GetCache(c *gin.Context) cache.Cache {
 	return nil
 }
 
+func (m *MultiTenantResolver) GetRetry(c *gin.Context) *resilience.Retry {
+	return nil
+}
+
 func (s *SingleTenantResolver) GetConfig(c *gin.Context) *config.Config {
 	return s.App.Config
 }
@@ -78,6 +85,10 @@ func (s *SingleTenantResolver) GetLogger(c *gin.Context) *zap.Logger {
 
 func (s *SingleTenantResolver) GetCache(c *gin.Context) cache.Cache {
 	return s.App.Cache
+}
+
+func (s *SingleTenantResolver) GetRetry(c *gin.Context) *resilience.Retry {
+	return s.App.Retry
 }
 
 var logger = utils.SetUpLogger()
@@ -114,12 +125,17 @@ func SetUpApp() *App {
 
 	fmt.Printf("Current cache instance %v \n", cacheInstance)
 
+	resillienceConfig := cfg.GetResilienceConfigData()
+
+	retry := resilience.NewRetryHandler(resillienceConfig.RetriesConfig, logger)
+
 	// Create app with all dependencies
 	app := &App{
 		Config: cfg,
 		Router: llmRouter,
 		Logger: logger,
 		Cache:  cacheInstance,
+		Retry:  retry,
 	}
 
 	return app
@@ -129,6 +145,8 @@ func initializeRouter(cfg *config.Config) (router.Router, error) {
 	enabled := cfg.GetEnabledProviders()
 	routerStrategy := cfg.GetRouterStrategy()
 
+	resillienceConfig := cfg.GetResilienceConfigData()
+
 	fmt.Printf("All Routing configs %v \n", *cfg)
 
 	if len(enabled) == 0 {
@@ -136,7 +154,9 @@ func initializeRouter(cfg *config.Config) (router.Router, error) {
 	}
 
 	routerConfig := types.RouterConfig{
-		Providers: enabled,
+		Providers:            enabled,
+		CircuitBreakerConfig: resillienceConfig.CircuitBreakerConfig,
+		RetryConfig:          resillienceConfig.RetriesConfig,
 	}
 
 	router, err := router.ConfigureRouterStrategy(routerStrategy, &routerConfig)

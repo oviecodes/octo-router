@@ -52,7 +52,7 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 
 func Completions(resolver app.ConfigResolver, c *gin.Context) {
 	var request types.Completion
-	retry := resilience.NewRetryHandler(map[string]int{}, resolver.GetLogger(c))
+	retry := resolver.GetRetry(c)
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		validations.HandleValidationError(c, err)

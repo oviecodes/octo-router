@@ -26,7 +26,7 @@ func Server() {
 
 	endpoints.SetUpRoutes(resolver, ginRouter)
 
-	// Same handler works for both modes!
+	// Same handler works for both modes
 	// multi-tenant reasoning: all the same functions only difference is how config is gotten,
 	// validated per request API key, user config fetched and used on per request basis - normal web app standard
 
