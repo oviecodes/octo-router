@@ -322,15 +322,15 @@ export APP_ENV="development"  # or "production"
 ## Roadmap
 
 - Streaming support (Server-Sent Events) [Done]
-- [ ] Proper error handling for different types of Error [In-progress]
+- Proper error handling for different types of Error [Done]
+- [ ] Circuit breaker for provider failures [In-progress]
+- [ ] Request/response caching
 - [ ] Cost tracking and reporting
 - [ ] Rate limiting per provider
-- [ ] Circuit breaker for provider failures
-- [ ] Multi-tenancy support
 - [ ] Custom routing strategies
 - [ ] Metrics and observability (Prometheus)
-- [ ] Request/response caching
 - [ ] Function/Tool calling support
+- [ ] Multi-tenancy support
 
 ## Contributing
 

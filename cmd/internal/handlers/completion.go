@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"llm-router/cmd/internal/app"
-	"llm-router/cmd/internal/providers"
 	"llm-router/cmd/internal/resilience"
 	"llm-router/cmd/internal/validations"
 	"llm-router/types"
@@ -14,7 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, provider providers.Provider, request types.Completion) {
+func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, provider types.Provider, request types.Completion) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")

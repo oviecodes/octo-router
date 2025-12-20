@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	providererrors "llm-router/cmd/internal/provider_errors"
 	"llm-router/types"
 	"time"
 
@@ -18,6 +19,7 @@ type OpenAIConfig struct {
 	MaxTokens int64
 	Model     string
 	Timeout   time.Duration
+	// Circuit *resilience.Circuit
 }
 
 type OpenAIProvider struct {
@@ -42,9 +44,9 @@ func (o *OpenAIProvider) Complete(ctx context.Context, messages []types.Message)
 
 	if err != nil {
 		// Translate to domain error
-		translatedErr := TranslateOpenAIError(err)
+		translatedErr := providererrors.TranslateOpenAIError(err)
 
-		var providerErr *ProviderError
+		var providerErr *providererrors.ProviderError
 		if errors.As(translatedErr, &providerErr) {
 			logger.Error("OpenAI request failed",
 				zap.String("error_type", providerErr.Type.String()),
@@ -117,7 +119,7 @@ func (o *OpenAIProvider) CompleteStream(ctx context.Context, messages []types.Me
 
 		if err := stream.Err(); err != nil {
 			logger.Error("Streaming error occurred", zap.Error(err))
-			providerErr := TranslateOpenAIError(err)
+			providerErr := providererrors.TranslateOpenAIError(err)
 
 			chunks <- &types.StreamChunk{
 				Content: "",

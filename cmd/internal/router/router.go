@@ -3,7 +3,6 @@ package router
 import (
 	"context"
 	"fmt"
-	"llm-router/cmd/internal/providers"
 	"llm-router/types"
 	"llm-router/utils"
 
@@ -11,7 +10,7 @@ import (
 )
 
 type Router interface {
-	SelectProvider(ctx context.Context) providers.Provider
+	SelectProvider(ctx context.Context) types.Provider
 }
 
 var logger = utils.SetUpLogger()

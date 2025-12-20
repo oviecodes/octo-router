@@ -9,14 +9,14 @@ import (
 )
 
 type RoundRobinRouter struct {
-	providers []providers.Provider
+	providers []types.Provider
 	mu        sync.Mutex
 	current   int
 }
 
 // var logger = utils.SetUpLogger()
 
-func (r *RoundRobinRouter) SelectProvider(ctx context.Context) providers.Provider {
+func (r *RoundRobinRouter) SelectProvider(ctx context.Context) types.Provider {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

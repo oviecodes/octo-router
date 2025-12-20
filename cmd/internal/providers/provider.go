@@ -1,7 +1,6 @@
 package providers
 
 import (
-	"context"
 	"llm-router/types"
 	"llm-router/utils"
 	"time"
@@ -9,17 +8,11 @@ import (
 	"go.uber.org/zap"
 )
 
-type Provider interface {
-	Complete(ctx context.Context, messages []types.Message) (*types.Message, error)
-	CountTokens(ctx context.Context, messages []types.Message) (int, error)
-	CompleteStream(ctx context.Context, messages []types.Message) (<-chan *types.StreamChunk, error)
-}
-
 var logger = utils.SetUpLogger()
 
-func ConfigureProviders(configs []types.ProviderConfigWithExtras) []Provider {
+func ConfigureProviders(configs []types.ProviderConfigWithExtras) []types.Provider {
 
-	var providers []Provider
+	var providers []types.Provider
 
 	for _, config := range configs {
 		switch config.Name {

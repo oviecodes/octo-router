@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	providererrors "llm-router/cmd/internal/provider_errors"
 	"llm-router/types"
 	"time"
 
@@ -41,9 +42,9 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 	)
 
 	if err != nil {
-		translatedErr := TranslateGeminiError(err)
+		translatedErr := providererrors.TranslateGeminiError(err)
 
-		var providerErr *ProviderError
+		var providerErr *providererrors.ProviderError
 		if errors.As(translatedErr, &providerErr) {
 			logger.Error("Gemini chat creation failed",
 				zap.String("error_type", providerErr.Type.String()),
@@ -59,9 +60,9 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 	res, err := chat.SendMessage(ctx, genai.Part{Text: currentMessage})
 
 	if err != nil {
-		translatedErr := TranslateGeminiError(err)
+		translatedErr := providererrors.TranslateGeminiError(err)
 
-		var providerErr *ProviderError
+		var providerErr *providererrors.ProviderError
 		if errors.As(translatedErr, &providerErr) {
 			logger.Error("Gemini send message failed",
 				zap.String("error_type", providerErr.Type.String()),

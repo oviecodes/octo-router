@@ -1,5 +1,15 @@
 package types
 
+import (
+	"context"
+)
+
+type Provider interface {
+	Complete(ctx context.Context, messages []Message) (*Message, error)
+	CountTokens(ctx context.Context, messages []Message) (int, error)
+	CompleteStream(ctx context.Context, messages []Message) (<-chan *StreamChunk, error)
+}
+
 type ProviderConfig struct {
 	Name    string `mapstructure:"name"`
 	APIKey  string `mapstructure:"apiKey"`

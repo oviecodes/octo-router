@@ -3,7 +3,7 @@ package resilience
 import (
 	"context"
 	"fmt"
-	"llm-router/cmd/internal/providers"
+	providererrors "llm-router/cmd/internal/provider_errors"
 	"math"
 	"time"
 
@@ -43,7 +43,7 @@ func Do[T any](ctx context.Context, r *Retry, handler func(context.Context) (T, 
 
 		lastErr = err
 
-		if !providers.IsRetryableError(err) {
+		if !providererrors.IsRetryableError(err) {
 			return result, fmt.Errorf("non-retryable error: %w", err)
 		}
 

@@ -2,7 +2,6 @@ package router
 
 import (
 	"context"
-	"llm-router/cmd/internal/providers"
 	"llm-router/types"
 	"testing"
 )
@@ -29,7 +28,7 @@ func (m *mockProvider) CountTokens(ctx context.Context, messages []types.Message
 
 func TestRoundRobinSelection(t *testing.T) {
 	// Create mock providers
-	allProviders := []providers.Provider{
+	allProviders := []types.Provider{
 		&mockProvider{name: "provider1"},
 		&mockProvider{name: "provider2"},
 		&mockProvider{name: "provider3"},
@@ -41,7 +40,7 @@ func TestRoundRobinSelection(t *testing.T) {
 	}
 
 	// Test round-robin distribution
-	selectedProviders := make([]providers.Provider, 6)
+	selectedProviders := make([]types.Provider, 6)
 
 	for i := range 6 {
 		selectedProviders[i] = router.SelectProvider(context.Background())
@@ -63,7 +62,7 @@ func TestRoundRobinSelection(t *testing.T) {
 }
 
 func TestRoundRobinWithSingleProvider(t *testing.T) {
-	providers := []providers.Provider{
+	providers := []types.Provider{
 		&mockProvider{name: "solo"},
 	}
 

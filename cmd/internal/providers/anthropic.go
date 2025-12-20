@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	providererrors "llm-router/cmd/internal/provider_errors"
 	"llm-router/types"
 	"time"
 
@@ -43,10 +44,10 @@ func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Messa
 
 	if err != nil {
 		// Translate to domain error
-		translatedErr := TranslateAnthropicError(err)
+		translatedErr := providererrors.TranslateAnthropicError(err)
 
 		// Log with provider error details
-		var providerErr *ProviderError
+		var providerErr *providererrors.ProviderError
 		if errors.As(translatedErr, &providerErr) {
 			logger.Error("Anthropic request failed",
 				zap.String("error_type", providerErr.Type.String()),

@@ -28,6 +28,7 @@ type App struct {
 	Logger *zap.Logger
 	Cache  cache.Cache
 	Retry  *resilience.Retry
+	// Circuit *resilience.Circuit
 }
 
 type SingleTenantResolver struct {
@@ -144,7 +145,6 @@ func SetUpApp() *App {
 func initializeRouter(cfg *config.Config) (router.Router, error) {
 	enabled := cfg.GetEnabledProviders()
 	routerStrategy := cfg.GetRouterStrategy()
-
 	resillienceConfig := cfg.GetResilienceConfigData()
 
 	fmt.Printf("All Routing configs %v \n", *cfg)
@@ -156,7 +156,6 @@ func initializeRouter(cfg *config.Config) (router.Router, error) {
 	routerConfig := types.RouterConfig{
 		Providers:            enabled,
 		CircuitBreakerConfig: resillienceConfig.CircuitBreakerConfig,
-		RetryConfig:          resillienceConfig.RetriesConfig,
 	}
 
 	router, err := router.ConfigureRouterStrategy(routerStrategy, &routerConfig)
