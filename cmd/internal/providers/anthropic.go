@@ -187,6 +187,10 @@ func (a *AnthropicProvider) CountTokens(ctx context.Context, messages []types.Me
 	return totalTokens, nil
 }
 
+func (a *AnthropicProvider) GetProviderName(ctx context.Context) string {
+	return "anthropic"
+}
+
 func NewAnthropicProvider(config AnthropicConfig) (*AnthropicProvider, error) {
 	if config.APIKey == "" {
 		return nil, fmt.Errorf("API key cannot be empty")

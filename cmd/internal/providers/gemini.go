@@ -196,6 +196,10 @@ func (g *GeminiProvider) CountTokens(ctx context.Context, messages []types.Messa
 	return totalTokens, nil
 }
 
+func (g *GeminiProvider) GetProviderName(ctx context.Context) string {
+	return "gemini"
+}
+
 func NewGeminiProvider(config GeminiConfig) (*GeminiProvider, error) {
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx, &genai.ClientConfig{

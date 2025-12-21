@@ -26,6 +26,10 @@ func (m *mockProvider) CountTokens(ctx context.Context, messages []types.Message
 	return 100, nil
 }
 
+func (m *mockProvider) GetProviderName(ctx context.Context) string {
+	return "mock-ai"
+}
+
 func TestRoundRobinSelection(t *testing.T) {
 	// Create mock providers
 	allProviders := []types.Provider{

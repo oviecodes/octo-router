@@ -190,6 +190,10 @@ func (o *OpenAIProvider) CountTokens(ctx context.Context, messages []types.Messa
 	return totalTokens, nil
 }
 
+func (o *OpenAIProvider) GetProviderName(ctx context.Context) string {
+	return "openai"
+}
+
 func NewOpenAIProvider(config OpenAIConfig) (*OpenAIProvider, error) {
 	client := openai.NewClient(
 		option.WithAPIKey(config.APIKey),

@@ -52,6 +52,7 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 func Completions(resolver app.ConfigResolver, c *gin.Context) {
 	var request types.Completion
 	retry := resolver.GetRetry(c)
+	// circuitBreaker := resolver.GetCircuitBreaker(c)
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		validations.HandleValidationError(c, err)
