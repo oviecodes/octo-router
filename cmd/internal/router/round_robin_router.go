@@ -32,7 +32,7 @@ func (r *RoundRobinRouter) SelectProvider(ctx context.Context, circuits map[stri
 		return provider, nil
 	}
 
-	return nil, fmt.Errorf("No available providers")
+	return nil, fmt.Errorf("no available providers")
 }
 
 func NewRoundRobinRouter(config types.RouterConfig) (*RoundRobinRouter, error) {

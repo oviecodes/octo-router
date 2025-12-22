@@ -87,10 +87,11 @@ func (a *AnthropicProvider) CompleteStream(ctx context.Context, messages []types
 			err := message.Accumulate(event)
 			if err != nil {
 				logger.Error("Failed to accumulate message event", zap.Error(err))
+				providerErr := providererrors.TranslateOpenAIError(err)
 				chunks <- &types.StreamChunk{
 					Content: "",
 					Done:    true,
-					Error:   err,
+					Error:   providerErr,
 				}
 
 				return
@@ -116,10 +117,11 @@ func (a *AnthropicProvider) CompleteStream(ctx context.Context, messages []types
 
 		if err := stream.Err(); err != nil {
 			logger.Sugar().Errorf("An error occurred while streaming: %v", err)
+			providerErr := providererrors.TranslateOpenAIError(err)
 			chunks <- &types.StreamChunk{
 				Content: "",
 				Done:    true,
-				Error:   err,
+				Error:   providerErr,
 			}
 		}
 	}()

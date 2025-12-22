@@ -114,10 +114,12 @@ func (g *GeminiProvider) CompleteStream(ctx context.Context, messages []types.Me
 		for chunk, err := range stream {
 			if err != nil {
 				logger.Error("Streaming error occurred", zap.Error(err))
+				providerErr := providererrors.TranslateOpenAIError(err)
+
 				chunks <- &types.StreamChunk{
 					Content: "",
 					Done:    true,
-					Error:   err,
+					Error:   providerErr,
 				}
 				return
 			}
