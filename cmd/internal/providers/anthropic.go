@@ -187,7 +187,7 @@ func (a *AnthropicProvider) CountTokens(ctx context.Context, messages []types.Me
 	return totalTokens, nil
 }
 
-func (a *AnthropicProvider) GetProviderName(ctx context.Context) string {
+func (a *AnthropicProvider) GetProviderName() string {
 	return "anthropic"
 }
 

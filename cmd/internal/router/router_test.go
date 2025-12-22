@@ -26,7 +26,7 @@ func (m *mockProvider) CountTokens(ctx context.Context, messages []types.Message
 	return 100, nil
 }
 
-func (m *mockProvider) GetProviderName(ctx context.Context) string {
+func (m *mockProvider) GetProviderName() string {
 	return "mock-ai"
 }
 
@@ -43,11 +43,15 @@ func TestRoundRobinSelection(t *testing.T) {
 		current:   0,
 	}
 
+	circuitBreakers := map[string]types.CircuitBreaker{
+		"openai": nil,
+	}
+
 	// Test round-robin distribution
 	selectedProviders := make([]types.Provider, 6)
 
 	for i := range 6 {
-		selectedProviders[i] = router.SelectProvider(context.Background())
+		selectedProviders[i] = router.SelectProvider(context.Background(), circuitBreakers)
 	}
 
 	// Should cycle through providers
@@ -75,9 +79,13 @@ func TestRoundRobinWithSingleProvider(t *testing.T) {
 		current:   0,
 	}
 
+	circuitBreakers := map[string]types.CircuitBreaker{
+		"openai": nil,
+	}
+
 	// Should always return the same provider
 	for i := range 5 {
-		selected := router.SelectProvider(context.Background())
+		selected := router.SelectProvider(context.Background(), circuitBreakers)
 		if selected != providers[0] {
 			t.Errorf("Expected solo provider, got different provider on iteration %d", i)
 		}

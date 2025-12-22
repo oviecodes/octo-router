@@ -190,7 +190,7 @@ func (o *OpenAIProvider) CountTokens(ctx context.Context, messages []types.Messa
 	return totalTokens, nil
 }
 
-func (o *OpenAIProvider) GetProviderName(ctx context.Context) string {
+func (o *OpenAIProvider) GetProviderName() string {
 	return "openai"
 }
 

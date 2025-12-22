@@ -52,7 +52,7 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 func Completions(resolver app.ConfigResolver, c *gin.Context) {
 	var request types.Completion
 	retry := resolver.GetRetry(c)
-	// circuitBreakers := resolver.GetCircuitBreaker(c)
+	circuitBreakers := resolver.GetCircuitBreaker(c)
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		validations.HandleValidationError(c, err)
@@ -73,9 +73,19 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 	)
 
 	router := resolver.GetRouter(c)
-	provider := router.SelectProvider(c.Request.Context())
+	provider, err := router.SelectProvider(c.Request.Context(), circuitBreakers)
+	providerName := provider.GetProviderName()
 
-	// circuitBreaker := circuitBreakers[provider.GetProviderName(c)]
+	if err != nil {
+		err := fmt.Errorf("no avialable providers, cannot process requests")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	circuitBreaker := circuitBreakers[providerName]
 
 	if request.Stream {
 		HandleStreamingCompletion(resolver, c, provider, request)
@@ -86,6 +96,8 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 		})
 
 		fmt.Printf("error from %T provider: %v", provider, err)
+
+		circuitBreaker.Execute(err)
 
 		if err != nil {
 			resolver.GetLogger(c).Error("Provider completion failed", zap.Error(err))

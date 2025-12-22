@@ -196,7 +196,7 @@ func (g *GeminiProvider) CountTokens(ctx context.Context, messages []types.Messa
 	return totalTokens, nil
 }
 
-func (g *GeminiProvider) GetProviderName(ctx context.Context) string {
+func (g *GeminiProvider) GetProviderName() string {
 	return "gemini"
 }
 

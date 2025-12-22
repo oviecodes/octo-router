@@ -10,7 +10,7 @@ import (
 )
 
 type Router interface {
-	SelectProvider(ctx context.Context) types.Provider
+	SelectProvider(ctx context.Context, circuits map[string]types.CircuitBreaker) (types.Provider, error)
 }
 
 var logger = utils.SetUpLogger()

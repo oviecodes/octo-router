@@ -8,7 +8,7 @@ type Provider interface {
 	Complete(ctx context.Context, messages []Message) (*Message, error)
 	CountTokens(ctx context.Context, messages []Message) (int, error)
 	CompleteStream(ctx context.Context, messages []Message) (<-chan *StreamChunk, error)
-	GetProviderName(ctx context.Context) string
+	GetProviderName() string
 }
 
 type ProviderConfig struct {

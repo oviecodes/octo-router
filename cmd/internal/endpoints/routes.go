@@ -20,6 +20,7 @@ func SetUpRoutes(resolver app.ConfigResolver, ginRouter *gin.Engine) {
 	ginRouter.POST("/admin/config", func(c *gin.Context) {
 		handlers.AdminConfig(resolver, c)
 	})
+
 	ginRouter.POST("/admin/providers", func(c *gin.Context) {
 		handlers.AdminProviders(resolver, c)
 	})

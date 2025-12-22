@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"fmt"
 	"llm-router/cmd/internal/providers"
 	"llm-router/types"
 	"os"
@@ -16,14 +17,22 @@ type RoundRobinRouter struct {
 
 // var logger = utils.SetUpLogger()
 
-func (r *RoundRobinRouter) SelectProvider(ctx context.Context) types.Provider {
+func (r *RoundRobinRouter) SelectProvider(ctx context.Context, circuits map[string]types.CircuitBreaker) (types.Provider, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	provider := r.providers[r.current]
-	r.current = (r.current + 1) % len(r.providers)
+	for range r.providers {
+		provider := r.providers[r.current]
+		r.current = (r.current + 1) % len(r.providers)
 
-	return provider
+		if _, ok := circuits[provider.GetProviderName()]; !ok {
+			continue
+		}
+
+		return provider, nil
+	}
+
+	return nil, fmt.Errorf("No available providers")
 }
 
 func NewRoundRobinRouter(config types.RouterConfig) (*RoundRobinRouter, error) {
