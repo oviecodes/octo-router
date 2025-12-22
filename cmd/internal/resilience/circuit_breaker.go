@@ -10,6 +10,7 @@ type Circuit struct {
 	State        string
 	FailureCount int
 	Threshold    int
+	Timeout      time.Duration
 }
 
 func (c *Circuit) GetState() string {
@@ -61,8 +62,34 @@ func (c *Circuit) resetState() {
 }
 
 func (c *Circuit) scheduleHalfOpen() {
-	time.Sleep(60 * time.Second)
+	time.Sleep(c.Timeout)
 	c.Mu.Lock()
 	defer c.Mu.Unlock()
 	c.State = "HALF_OPEN"
+}
+
+func InitCircuitBreakers(providers []string, config map[string]int) map[string]*Circuit {
+
+	failureThreshold := getCircuitPropsOrDefault(config, "failureThreshold", 5)
+	resetTimeout := getCircuitPropsOrDefault(config, "resetTimeout", 60000)
+
+	allCircuitBreakers := make(map[string]*Circuit)
+
+	for _, provider := range providers {
+		allCircuitBreakers[provider] = &Circuit{
+			State:     "CLOSED",
+			Threshold: failureThreshold,
+			Timeout:   time.Duration(resetTimeout) * time.Millisecond,
+		}
+	}
+
+	return allCircuitBreakers
+}
+
+func getCircuitPropsOrDefault(config map[string]int, name string, defaultVal int) int {
+	if val, ok := config[name]; ok {
+		return val
+	}
+
+	return defaultVal
 }

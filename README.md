@@ -31,8 +31,8 @@ A production-ready, open-source LLM router built in Go. Route requests across mu
 ### Installation
 
 ```bash
-git clone https://github.com/yourusername/llm-router.git
-cd llm-router
+git clone https://github.com/oviecodes/octo-router.git
+cd octo-router
 go mod download
 ```
 
