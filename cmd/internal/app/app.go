@@ -31,73 +31,10 @@ type App struct {
 	Circuit map[string]*resilience.Circuit
 }
 
-type SingleTenantResolver struct {
-	App *App
-}
-
-type MultiTenantResolver struct {
-	Logger *zap.Logger
-}
-
-func (m *MultiTenantResolver) GetConfig(c *gin.Context) *config.Config {
-	// Extract API key from request
-	// apiKey := c.GetHeader("X-API-Key")
-	// Fetch tenant config from DB/cache
-	// return fetchTenantConfig(apiKey)
-	return nil
-}
-
-// When I implement multi-tenancy
-// it might not be initializeRouter,
-// it might be some other function that checks
-// if a router is already cached for said user, then retrieve
-// if not fetch cfg from database and configure router properly
-func (m *MultiTenantResolver) GetRouter(c *gin.Context) router.Router {
-	// cfg := m.GetConfig(c)
-	// router, _ := initializeRouter(cfg)
-	// return router
-
-	return nil
-}
-
-func (m *MultiTenantResolver) GetLogger(c *gin.Context) *zap.Logger {
-	return m.Logger
-}
-
-func (m *MultiTenantResolver) GetCache(c *gin.Context) cache.Cache {
-	return nil
-}
-
-func (m *MultiTenantResolver) GetRetry(c *gin.Context) *resilience.Retry {
-	return nil
-}
-
-func (s *SingleTenantResolver) GetConfig(c *gin.Context) *config.Config {
-	return s.App.Config
-}
-
-func (s *SingleTenantResolver) GetRouter(c *gin.Context) router.Router {
-	return s.App.Router
-}
-
-func (s *SingleTenantResolver) GetLogger(c *gin.Context) *zap.Logger {
-	return s.App.Logger
-}
-
-func (s *SingleTenantResolver) GetCache(c *gin.Context) cache.Cache {
-	return s.App.Cache
-}
-
-func (s *SingleTenantResolver) GetRetry(c *gin.Context) *resilience.Retry {
-	return s.App.Retry
-}
-
 var logger = utils.SetUpLogger()
 
 func SetUpApp() *App {
 	defer logger.Sync()
-
-	// logger.Info("This is an info message", zap.String("key", "value"), zap.Int("number", 123))
 
 	logger.Info("Loading configs")
 	cfg, err := config.LoadConfig()
@@ -165,7 +102,6 @@ func initializeRouter(cfg *config.Config) (router.Router, error) {
 func initializeCircuitBreakers(cfg *config.Config) map[string]*resilience.Circuit {
 	enabled := cfg.GetEnabledProviders()
 	resillienceConfig := cfg.GetResilienceConfigData()
-
 	providers := make([]string, len(enabled))
 
 	for _, provider := range enabled {
@@ -173,6 +109,5 @@ func initializeCircuitBreakers(cfg *config.Config) map[string]*resilience.Circui
 	}
 
 	circuit := resilience.NewCircuitBreakers(providers, resillienceConfig.CircuitBreakerConfig)
-
 	return circuit
 }
