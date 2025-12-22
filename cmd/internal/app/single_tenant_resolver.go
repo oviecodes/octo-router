@@ -5,6 +5,7 @@ import (
 	"llm-router/cmd/internal/resilience"
 	"llm-router/cmd/internal/router"
 	"llm-router/config"
+	"llm-router/types"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -34,6 +35,6 @@ func (s *SingleTenantResolver) GetRetry(c *gin.Context) *resilience.Retry {
 	return s.App.Retry
 }
 
-func (s *SingleTenantResolver) GetCircuitBreaker(c *gin.Context, name string) *resilience.Circuit {
-	return s.App.Circuit[name]
+func (s *SingleTenantResolver) GetCircuitBreaker(c *gin.Context) map[string]types.CircuitBreaker {
+	return s.App.Circuit
 }

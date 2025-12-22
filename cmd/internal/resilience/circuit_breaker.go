@@ -1,6 +1,7 @@
 package resilience
 
 import (
+	"llm-router/types"
 	"sync"
 	"time"
 )
@@ -68,12 +69,12 @@ func (c *Circuit) scheduleHalfOpen() {
 	c.State = "HALF_OPEN"
 }
 
-func NewCircuitBreakers(providers []string, config map[string]int) map[string]*Circuit {
+func NewCircuitBreakers(providers []string, config map[string]int) map[string]types.CircuitBreaker {
 
 	failureThreshold := getCircuitPropsOrDefault(config, "failureThreshold", 5)
 	resetTimeout := getCircuitPropsOrDefault(config, "resetTimeout", 60000)
 
-	allCircuitBreakers := make(map[string]*Circuit)
+	allCircuitBreakers := make(map[string]types.CircuitBreaker)
 
 	for _, provider := range providers {
 		allCircuitBreakers[provider] = &Circuit{

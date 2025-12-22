@@ -20,6 +20,7 @@ type ConfigResolver interface {
 	GetLogger(c *gin.Context) *zap.Logger
 	GetCache(c *gin.Context) cache.Cache
 	GetRetry(c *gin.Context) *resilience.Retry
+	GetCircuitBreaker(c *gin.Context) map[string]types.CircuitBreaker
 }
 
 type App struct {
@@ -28,7 +29,7 @@ type App struct {
 	Logger  *zap.Logger
 	Cache   cache.Cache
 	Retry   *resilience.Retry
-	Circuit map[string]*resilience.Circuit
+	Circuit map[string]types.CircuitBreaker
 }
 
 var logger = utils.SetUpLogger()
@@ -61,7 +62,7 @@ func SetUpApp() *App {
 		}
 	}
 
-	fmt.Printf("Current cache instance %v \n", cacheInstance)
+	// fmt.Printf("Current cache instance %v \n", cacheInstance)
 
 	resillienceConfig := cfg.GetResilienceConfigData()
 	retry := resilience.NewRetryHandler(resillienceConfig.RetriesConfig, logger)
@@ -99,7 +100,7 @@ func initializeRouter(cfg *config.Config) (router.Router, error) {
 	return router, err
 }
 
-func initializeCircuitBreakers(cfg *config.Config) map[string]*resilience.Circuit {
+func initializeCircuitBreakers(cfg *config.Config) map[string]types.CircuitBreaker {
 	enabled := cfg.GetEnabledProviders()
 	resillienceConfig := cfg.GetResilienceConfigData()
 	providers := make([]string, len(enabled))
