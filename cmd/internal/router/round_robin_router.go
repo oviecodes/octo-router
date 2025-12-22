@@ -25,7 +25,9 @@ func (r *RoundRobinRouter) SelectProvider(ctx context.Context, circuits map[stri
 		provider := r.providers[r.current]
 		r.current = (r.current + 1) % len(r.providers)
 
-		if _, ok := circuits[provider.GetProviderName()]; !ok {
+		breaker, ok := circuits[provider.GetProviderName()]
+
+		if !ok || !breaker.CanExecute() {
 			continue
 		}
 

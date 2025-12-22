@@ -74,7 +74,6 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 
 	router := resolver.GetRouter(c)
 	provider, err := router.SelectProvider(c.Request.Context(), circuitBreakers)
-	providerName := provider.GetProviderName()
 
 	if err != nil {
 		err := fmt.Errorf("no avialable providers, cannot process requests")
@@ -85,7 +84,10 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 		return
 	}
 
+	providerName := provider.GetProviderName()
 	circuitBreaker := circuitBreakers[providerName]
+
+	fmt.Printf("current circuit breaker failure count: %v, state: %v \n", circuitBreaker.GetState(), circuitBreaker)
 
 	if request.Stream {
 		HandleStreamingCompletion(resolver, c, provider, request)
