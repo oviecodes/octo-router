@@ -74,6 +74,16 @@ routing:
 resilience:
   timeout: 30000
 
+  retries:
+    maxAttempts: 3
+    initialDelay: 1000
+    maxDelay: 10000
+    backoffMultiplier: 2
+
+  circuitBreaker:
+    failureThreshold: 5
+    resetTimeout: 60000
+
 cache:
   enabled: true
   ttl: 3600
@@ -323,7 +333,7 @@ export APP_ENV="development"  # or "production"
 
 - Streaming support (Server-Sent Events) [Done]
 - Proper error handling for different types of Error [Done]
-- [ ] Circuit breaker for provider failures [In-progress]
+- Circuit breaker for provider failures [Done]
 - [ ] Request/response caching
 - [ ] Cost tracking and reporting
 - [ ] Rate limiting per provider
