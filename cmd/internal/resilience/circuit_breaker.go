@@ -68,7 +68,7 @@ func (c *Circuit) scheduleHalfOpen() {
 	c.State = "HALF_OPEN"
 }
 
-func InitCircuitBreakers(providers []string, config map[string]int) map[string]*Circuit {
+func NewCircuitBreakers(providers []string, config map[string]int) map[string]*Circuit {
 
 	failureThreshold := getCircuitPropsOrDefault(config, "failureThreshold", 5)
 	resetTimeout := getCircuitPropsOrDefault(config, "resetTimeout", 60000)

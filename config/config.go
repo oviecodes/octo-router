@@ -145,16 +145,6 @@ func (c *Config) GetLimitsConfigDataByName(name string) types.ProviderLimits {
 }
 
 func (c *Config) GetDefaultModelConfigDataByName(name string) *types.ProviderExtra {
-	// for _, extra := range c.Models.DefaultModels {
-	// 	if extra.Name == name {
-	// 		return &types.ProviderExtra{
-	// 			Model:     extra.Model,
-	// 			MaxTokens: extra.MaxTokens,
-	// 		}
-	// 	}
-	// }
-	// return nil
-
 	extra, ok := c.Models.DefaultModels[name]
 
 	if !ok {

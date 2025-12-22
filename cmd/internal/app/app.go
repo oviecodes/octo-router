@@ -23,12 +23,12 @@ type ConfigResolver interface {
 }
 
 type App struct {
-	Config *config.Config
-	Router router.Router
-	Logger *zap.Logger
-	Cache  cache.Cache
-	Retry  *resilience.Retry
-	// Circuit *resilience.Circuit
+	Config  *config.Config
+	Router  router.Router
+	Logger  *zap.Logger
+	Cache   cache.Cache
+	Retry   *resilience.Retry
+	Circuit map[string]*resilience.Circuit
 }
 
 type SingleTenantResolver struct {
@@ -127,16 +127,17 @@ func SetUpApp() *App {
 	fmt.Printf("Current cache instance %v \n", cacheInstance)
 
 	resillienceConfig := cfg.GetResilienceConfigData()
-
 	retry := resilience.NewRetryHandler(resillienceConfig.RetriesConfig, logger)
+	circuit := initializeCircuitBreakers(cfg)
 
 	// Create app with all dependencies
 	app := &App{
-		Config: cfg,
-		Router: llmRouter,
-		Logger: logger,
-		Cache:  cacheInstance,
-		Retry:  retry,
+		Config:  cfg,
+		Router:  llmRouter,
+		Logger:  logger,
+		Cache:   cacheInstance,
+		Retry:   retry,
+		Circuit: circuit,
 	}
 
 	return app
@@ -145,7 +146,6 @@ func SetUpApp() *App {
 func initializeRouter(cfg *config.Config) (router.Router, error) {
 	enabled := cfg.GetEnabledProviders()
 	routerStrategy := cfg.GetRouterStrategy()
-	resillienceConfig := cfg.GetResilienceConfigData()
 
 	fmt.Printf("All Routing configs %v \n", *cfg)
 
@@ -154,11 +154,25 @@ func initializeRouter(cfg *config.Config) (router.Router, error) {
 	}
 
 	routerConfig := types.RouterConfig{
-		Providers:            enabled,
-		CircuitBreakerConfig: resillienceConfig.CircuitBreakerConfig,
+		Providers: enabled,
 	}
 
 	router, err := router.ConfigureRouterStrategy(routerStrategy, &routerConfig)
 
 	return router, err
+}
+
+func initializeCircuitBreakers(cfg *config.Config) map[string]*resilience.Circuit {
+	enabled := cfg.GetEnabledProviders()
+	resillienceConfig := cfg.GetResilienceConfigData()
+
+	providers := make([]string, len(enabled))
+
+	for _, provider := range enabled {
+		providers = append(providers, provider.Name)
+	}
+
+	circuit := resilience.NewCircuitBreakers(providers, resillienceConfig.CircuitBreakerConfig)
+
+	return circuit
 }
