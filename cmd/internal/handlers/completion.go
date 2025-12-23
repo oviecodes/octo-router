@@ -25,8 +25,6 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 
 	chunks, err := provider.CompleteStream(c.Request.Context(), request.Messages)
 
-	circuitBreaker.Execute(err)
-
 	if err != nil {
 		resolver.GetLogger(c).Error("Provider streaming failed", zap.Error(err))
 		c.SSEvent("error", gin.H{
@@ -37,6 +35,9 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 
 	// Stream chunks to client
 	for chunk := range chunks {
+
+		circuitBreaker.Execute(chunk.Error)
+
 		if chunk.Error != nil {
 			c.SSEvent("error", gin.H{
 				"error": chunk.Error.Error(),
