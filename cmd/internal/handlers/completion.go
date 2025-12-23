@@ -19,9 +19,14 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 	c.Header("Connection", "keep-alive")
 	c.Header("Transfer-Encoding", "chunked")
 
+	circuitBreakers := resolver.GetCircuitBreaker(c)
+	providerName := provider.GetProviderName()
+	circuitBreaker := circuitBreakers[providerName]
+
 	chunks, err := provider.CompleteStream(c.Request.Context(), request.Messages)
 
-	fmt.Printf("Streaming error %v \n", err)
+	circuitBreaker.Execute(err)
+
 	if err != nil {
 		resolver.GetLogger(c).Error("Provider streaming failed", zap.Error(err))
 		c.SSEvent("error", gin.H{
@@ -76,9 +81,8 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 	provider, err := router.SelectProvider(c.Request.Context(), circuitBreakers)
 
 	if err != nil {
-		err := fmt.Errorf("no avialable providers, cannot process requests")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "no available providers, cannot process requests",
 		})
 
 		return
@@ -87,7 +91,10 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 	providerName := provider.GetProviderName()
 	circuitBreaker := circuitBreakers[providerName]
 
-	fmt.Printf("current circuit breaker failure count: %v, state: %v \n", circuitBreaker.GetState(), circuitBreaker)
+	resolver.GetLogger(c).Debug("Circuit breaker state",
+		zap.String("provider", providerName),
+		zap.Any("Circuit Breaker", circuitBreaker),
+	)
 
 	if request.Stream {
 		HandleStreamingCompletion(resolver, c, provider, request)
@@ -97,7 +104,10 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 			return provider.Complete(c.Request.Context(), request.Messages)
 		})
 
-		fmt.Printf("error from %T provider: %v", provider, err)
+		resolver.GetLogger(c).Debug("Provider response",
+			zap.String("provider_type", fmt.Sprintf("%T", provider)),
+			zap.Error(err),
+		)
 
 		circuitBreaker.Execute(err)
 
