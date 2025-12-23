@@ -190,7 +190,7 @@ func (a *AnthropicProvider) CountTokens(ctx context.Context, messages []types.Me
 }
 
 func (a *AnthropicProvider) GetProviderName() string {
-	return "anthropic"
+	return ProviderAnthropic
 }
 
 func NewAnthropicProvider(config AnthropicConfig) (*AnthropicProvider, error) {

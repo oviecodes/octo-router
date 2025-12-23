@@ -19,7 +19,6 @@ type OpenAIConfig struct {
 	MaxTokens int64
 	Model     string
 	Timeout   time.Duration
-	// Circuit *resilience.Circuit
 }
 
 type OpenAIProvider struct {
@@ -191,7 +190,7 @@ func (o *OpenAIProvider) CountTokens(ctx context.Context, messages []types.Messa
 }
 
 func (o *OpenAIProvider) GetProviderName() string {
-	return "openai"
+	return ProviderOpenAI
 }
 
 func NewOpenAIProvider(config OpenAIConfig) (*OpenAIProvider, error) {

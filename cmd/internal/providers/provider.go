@@ -3,9 +3,16 @@ package providers
 import (
 	"llm-router/types"
 	"llm-router/utils"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
+)
+
+const (
+	ProviderOpenAI    = "openai"
+	ProviderAnthropic = "anthropic"
+	ProviderGemini    = "gemini"
 )
 
 var logger = utils.SetUpLogger()
@@ -15,7 +22,7 @@ func ConfigureProviders(configs []types.ProviderConfigWithExtras) []types.Provid
 	var providers []types.Provider
 
 	for _, config := range configs {
-		switch config.Name {
+		switch strings.ToLower(config.Name) {
 		case "openai":
 
 			if config.APIKey == "" || !config.Enabled {

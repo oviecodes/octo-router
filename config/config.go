@@ -5,6 +5,7 @@ import (
 	"llm-router/types"
 	"llm-router/utils"
 	"os"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -70,7 +71,7 @@ func (c *Config) GetEnabledProviders() []types.ProviderConfigWithExtras {
 
 			providerDefaults := c.GetDefaultModelConfigDataByName(provider.Name)
 			providerWithExtras := types.ProviderConfigWithExtras{
-				Name:    provider.Name,
+				Name:    strings.ToLower(provider.Name),
 				APIKey:  provider.APIKey,
 				Enabled: provider.Enabled,
 				Timeout: c.Resilience.Timeout,

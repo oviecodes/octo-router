@@ -199,7 +199,7 @@ func (g *GeminiProvider) CountTokens(ctx context.Context, messages []types.Messa
 }
 
 func (g *GeminiProvider) GetProviderName() string {
-	return "gemini"
+	return ProviderGemini
 }
 
 func NewGeminiProvider(config GeminiConfig) (*GeminiProvider, error) {
