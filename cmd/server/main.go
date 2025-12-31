@@ -1,6 +1,7 @@
 package main
 
 import (
+	"llm-router/cmd/internal/metrics"
 	"llm-router/cmd/internal/server"
 	"log"
 	"path/filepath"
@@ -30,4 +31,8 @@ func main() {
 	}
 
 	server.Server()
+
+	// for now start metrics server immediately
+	// later will have the user config enable / disable metrics endpoints
+	metrics.Metrics()
 }
