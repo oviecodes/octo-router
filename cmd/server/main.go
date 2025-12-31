@@ -30,9 +30,13 @@ func main() {
 		log.Println("No .env file found, using existing environment variables")
 	}
 
-	server.Server()
-
 	// for now start metrics server immediately
 	// later will have the user config enable / disable metrics endpoints
-	metrics.Metrics()
+	go func() {
+		if err := metrics.Metrics(); err != nil {
+			log.Fatalf("Metrics server failed error: %v", err)
+		}
+	}()
+
+	server.Server()
 }
