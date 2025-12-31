@@ -135,6 +135,5 @@ func Metrics() error {
 	}
 
 	logger.Info("Starting Metrics server on port", zap.String("port", port))
-
 	return http.ListenAndServe(":"+port, mux)
 }

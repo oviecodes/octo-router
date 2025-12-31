@@ -3,13 +3,39 @@ package server
 import (
 	"llm-router/cmd/internal/app"
 	"llm-router/cmd/internal/endpoints"
+	"llm-router/cmd/internal/metrics"
 	"llm-router/utils"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 var logger = utils.SetUpLogger()
+
+func MetricsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+
+		c.Next()
+
+		duration := time.Since(start).Seconds()
+		status := strconv.Itoa(c.Writer.Status())
+
+		metrics.HttpRequestsTotal.WithLabelValues(
+			c.Request.Method,
+			c.FullPath(),
+			status,
+		).Inc()
+
+		metrics.HttpRequestDuration.WithLabelValues(
+			c.Request.Method,
+			c.FullPath(),
+			status,
+		).Observe(duration)
+	}
+}
 
 func Server() {
 	// decide start up type
@@ -23,6 +49,7 @@ func Server() {
 	}
 
 	ginRouter := gin.Default()
+	ginRouter.Use(MetricsMiddleware())
 
 	endpoints.SetUpRoutes(resolver, ginRouter)
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"llm-router/cmd/internal/metrics"
 	providererrors "llm-router/cmd/internal/provider_errors"
 	"llm-router/types"
 	"time"
@@ -29,6 +30,7 @@ type AnthropicProvider struct {
 }
 
 func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
+	start := time.Now()
 
 	ctx, cancel := context.WithTimeout(ctx, a.timeout)
 	defer cancel()
@@ -42,7 +44,11 @@ func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Messa
 		Model:     a.model,
 	})
 
+	duration := time.Since(start).Seconds()
+	status := "success"
+
 	if err != nil {
+		status = "error"
 		// Translate to domain error
 		translatedErr := providererrors.TranslateAnthropicError(err)
 
@@ -59,6 +65,9 @@ func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Messa
 
 		return nil, translatedErr
 	}
+
+	metrics.ProviderRequestsTotal.WithLabelValues(a.GetProviderName(), status).Inc()
+	metrics.ProviderRequestDuration.WithLabelValues(a.GetProviderName()).Observe(duration)
 
 	response := a.convertToRouterMessage(message)
 	return response, nil
