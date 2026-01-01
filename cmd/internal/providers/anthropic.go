@@ -31,6 +31,7 @@ type AnthropicProvider struct {
 
 func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
 	start := time.Now()
+	providerName := a.GetProviderName()
 
 	ctx, cancel := context.WithTimeout(ctx, a.timeout)
 	defer cancel()
@@ -63,11 +64,14 @@ func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Messa
 			)
 		}
 
+		metrics.ProviderRequestsTotal.WithLabelValues(providerName, status).Inc()
+		metrics.ProviderRequestDuration.WithLabelValues(providerName).Observe(duration)
+
 		return nil, translatedErr
 	}
 
-	metrics.ProviderRequestsTotal.WithLabelValues(a.GetProviderName(), status).Inc()
-	metrics.ProviderRequestDuration.WithLabelValues(a.GetProviderName()).Observe(duration)
+	metrics.ProviderRequestsTotal.WithLabelValues(providerName, status).Inc()
+	metrics.ProviderRequestDuration.WithLabelValues(providerName).Observe(duration)
 
 	response := a.convertToRouterMessage(message)
 	return response, nil

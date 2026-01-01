@@ -10,12 +10,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
-	"github.com/prometheus/client_golang/prometheus/promauto"
+	// "github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
-	HttpRequestsTotal = promauto.NewCounterVec(
+	HttpRequestsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "llm_router_http_requests_total",
 			Help: "Total HTTP requests received",
@@ -23,7 +23,7 @@ var (
 		[]string{"method", "path", "status"},
 	)
 
-	HttpRequestDuration = promauto.NewHistogramVec(
+	HttpRequestDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "llm_router_http_request_duration_seconds",
 			Help:    "HTTP request latency",
@@ -32,7 +32,7 @@ var (
 		[]string{"method", "path", "status"},
 	)
 
-	ProviderRequestsTotal = promauto.NewCounterVec(
+	ProviderRequestsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "llm_router_provider_requests_total",
 			Help: "Total requests to each provider",
@@ -40,7 +40,7 @@ var (
 		[]string{"provider", "status"},
 	)
 
-	ProviderRequestDuration = promauto.NewHistogramVec(
+	ProviderRequestDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "llm_router_provider_request_duration_seconds",
 			Help:    "Provider request latency",
@@ -49,7 +49,7 @@ var (
 		[]string{"provider"},
 	)
 
-	ProviderTokensUsed = promauto.NewCounterVec(
+	ProviderTokensUsed = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "llm_router_provider_tokens_total",
 			Help: "Total tokens consumed per provider",
@@ -57,7 +57,7 @@ var (
 		[]string{"provider", "type"},
 	)
 
-	ProviderCostTotal = promauto.NewCounterVec(
+	ProviderCostTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "llm_router_provider_cost_usd_total",
 			Help: "Total cost in USD per provider",
@@ -65,7 +65,7 @@ var (
 		[]string{"provider"},
 	)
 
-	CircuitBreakerState = promauto.NewGaugeVec(
+	CircuitBreakerState = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "llm_router_circuit_breaker_state",
 			Help: "Circuit breaker state (0=closed, 1=open, 2=half_open)",
@@ -73,7 +73,7 @@ var (
 		[]string{"provider"},
 	)
 
-	CircuitBreakerTrips = promauto.NewCounterVec(
+	CircuitBreakerTrips = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "llm_router_circuit_breaker_trips_total",
 			Help: "Number of times circuit breaker opened",
@@ -81,7 +81,7 @@ var (
 		[]string{"provider"},
 	)
 
-	RetryAttemptsTotal = promauto.NewCounterVec(
+	RetryAttemptsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "llm_router_retry_attempts_total",
 			Help: "Total retry attempts",
@@ -89,14 +89,14 @@ var (
 		[]string{"provider", "outcome"},
 	)
 
-	CacheHitsTotal = promauto.NewCounter(
+	CacheHitsTotal = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Name: "llm_router_cache_hits_total",
 			Help: "Total cache hits",
 		},
 	)
 
-	CacheMissesTotal = promauto.NewCounter(
+	CacheMissesTotal = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Name: "llm_router_cache_misses_total",
 			Help: "Total cache misses",

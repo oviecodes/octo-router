@@ -3,6 +3,7 @@ package resilience
 import (
 	"context"
 	"fmt"
+	"llm-router/cmd/internal/metrics"
 	providererrors "llm-router/cmd/internal/provider_errors"
 	"math"
 	"time"
@@ -38,7 +39,14 @@ func Do[T any](ctx context.Context, r *Retry, handler func(context.Context) (T, 
 		res, err := handler(ctx)
 
 		if err == nil {
+			if attempt > 0 {
+				metrics.RetryAttemptsTotal.WithLabelValues("Unknown", "success").Inc()
+			}
 			return res, nil
+		}
+
+		if attempt > 0 {
+			metrics.RetryAttemptsTotal.WithLabelValues("unknown", "attempt").Inc()
 		}
 
 		lastErr = err
@@ -64,6 +72,7 @@ func Do[T any](ctx context.Context, r *Retry, handler func(context.Context) (T, 
 		}
 	}
 
+	metrics.RetryAttemptsTotal.WithLabelValues("unknown", "failure").Inc()
 	return result, fmt.Errorf("max retry attempts (%d) exceeded: %w", r.config.maxAttempts, lastErr)
 }
 

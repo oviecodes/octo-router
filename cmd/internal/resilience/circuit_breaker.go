@@ -1,6 +1,7 @@
 package resilience
 
 import (
+	"llm-router/cmd/internal/metrics"
 	"llm-router/types"
 	"sync"
 	"time"
@@ -12,6 +13,7 @@ type Circuit struct {
 	FailureCount int
 	Threshold    int
 	Timeout      time.Duration
+	Provider     string
 }
 
 func (c *Circuit) GetState() string {
@@ -44,6 +46,9 @@ func (c *Circuit) Execute(err error) {
 	if err != nil {
 		c.FailureCount++
 		if c.FailureCount >= c.Threshold {
+			metrics.CircuitBreakerState.WithLabelValues(c.Provider).Set(1)
+			metrics.CircuitBreakerTrips.WithLabelValues(c.Provider).Inc()
+
 			c.State = "OPEN"
 			go c.scheduleHalfOpen()
 		}
@@ -59,6 +64,7 @@ func (c *Circuit) Execute(err error) {
 
 func (c *Circuit) resetState() {
 	c.FailureCount = 0
+	metrics.CircuitBreakerState.WithLabelValues(c.Provider).Set(0)
 	c.State = "CLOSED"
 }
 
@@ -66,6 +72,7 @@ func (c *Circuit) scheduleHalfOpen() {
 	time.Sleep(c.Timeout)
 	c.Mu.Lock()
 	defer c.Mu.Unlock()
+	metrics.CircuitBreakerState.WithLabelValues(c.Provider).Set(2)
 	c.State = "HALF_OPEN"
 }
 
@@ -81,6 +88,7 @@ func NewCircuitBreakers(providers []string, config map[string]int) map[string]ty
 			State:     "CLOSED",
 			Threshold: failureThreshold,
 			Timeout:   time.Duration(resetTimeout) * time.Millisecond,
+			Provider:  provider,
 		}
 	}
 

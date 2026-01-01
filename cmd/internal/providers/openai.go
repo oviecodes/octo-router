@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"llm-router/cmd/internal/metrics"
 	providererrors "llm-router/cmd/internal/provider_errors"
 	"llm-router/types"
 	"time"
@@ -29,6 +30,8 @@ type OpenAIProvider struct {
 }
 
 func (o *OpenAIProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
+	start := time.Now()
+	providerName := o.GetProviderName()
 
 	ctx, cancel := context.WithTimeout(ctx, o.timeout)
 	defer cancel()
@@ -41,7 +44,11 @@ func (o *OpenAIProvider) Complete(ctx context.Context, messages []types.Message)
 		MaxCompletionTokens: openai.Opt(o.maxTokens),
 	})
 
+	duration := time.Since(start).Seconds()
+	status := "success"
+
 	if err != nil {
+		status = "error"
 		// Translate to domain error
 		translatedErr := providererrors.TranslateOpenAIError(err)
 
@@ -55,11 +62,15 @@ func (o *OpenAIProvider) Complete(ctx context.Context, messages []types.Message)
 			)
 		}
 
+		metrics.ProviderRequestsTotal.WithLabelValues(providerName, status).Inc()
+		metrics.ProviderRequestDuration.WithLabelValues(providerName).Observe(duration)
 		return nil, translatedErr
 	}
 
-	response := o.convertToRouterMessage(chatCompletion)
+	metrics.ProviderRequestsTotal.WithLabelValues(providerName, status).Inc()
+	metrics.ProviderRequestDuration.WithLabelValues(providerName).Observe(duration)
 
+	response := o.convertToRouterMessage(chatCompletion)
 	return &response, nil
 }
 

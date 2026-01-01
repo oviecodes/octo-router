@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"llm-router/cmd/internal/metrics"
 	providererrors "llm-router/cmd/internal/provider_errors"
 	"llm-router/types"
 	"time"
@@ -28,6 +29,8 @@ type GeminiProvider struct {
 }
 
 func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
+	start := time.Now()
+	providerName := g.GetProviderName()
 
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
 	defer cancel()
@@ -41,7 +44,11 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 		geminiMessages,
 	)
 
+	status := "success"
+
 	if err != nil {
+		status = "error"
+
 		translatedErr := providererrors.TranslateGeminiError(err)
 
 		var providerErr *providererrors.ProviderError
@@ -57,9 +64,13 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 		return nil, translatedErr
 	}
 
+	duration := time.Since(start).Seconds()
+
 	res, err := chat.SendMessage(ctx, genai.Part{Text: currentMessage})
 
 	if err != nil {
+		status = "error"
+
 		translatedErr := providererrors.TranslateGeminiError(err)
 
 		var providerErr *providererrors.ProviderError
@@ -72,6 +83,9 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 			)
 		}
 
+		metrics.ProviderRequestsTotal.WithLabelValues(providerName, status).Inc()
+		metrics.ProviderRequestDuration.WithLabelValues(providerName).Observe(duration)
+
 		return nil, translatedErr
 	}
 
@@ -82,8 +96,10 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 		return nil, fmt.Errorf("no response candidates from Gemini")
 	}
 
-	response = g.convertToRouterMessage(res.Candidates[0].Content.Parts[0].Text)
+	metrics.ProviderRequestsTotal.WithLabelValues(providerName, status).Inc()
+	metrics.ProviderRequestDuration.WithLabelValues(providerName).Observe(duration)
 
+	response = g.convertToRouterMessage(res.Candidates[0].Content.Parts[0].Text)
 	return response, nil
 }
 
