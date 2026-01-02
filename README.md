@@ -21,11 +21,11 @@ A production-ready, open-source LLM router built in Go. Route requests across mu
 
 All models use the standardized `provider/model` naming format.
 
-| Provider      | Status    | Models                                                                                               |
-| ------------- | --------- | ---------------------------------------------------------------------------------------------------- |
-| OpenAI        | Supported | openai/gpt-5, openai/gpt-5.1, openai/gpt-4o, openai/gpt-4o-mini, openai/gpt-3.5-turbo               |
+| Provider      | Status    | Models                                                                                                     |
+| ------------- | --------- | ---------------------------------------------------------------------------------------------------------- |
+| OpenAI        | Supported | openai/gpt-5, openai/gpt-5.1, openai/gpt-4o, openai/gpt-4o-mini, openai/gpt-3.5-turbo                      |
 | Anthropic     | Supported | anthropic/claude-opus-4.5, anthropic/claude-sonnet-4, anthropic/claude-haiku-4.5, anthropic/claude-haiku-3 |
-| Google Gemini | Supported | gemini/gemini-2.5-flash, gemini/gemini-2.5-flash-lite, gemini/gemini-2.0-pro                        |
+| Google Gemini | Supported | gemini/gemini-2.5-flash, gemini/gemini-2.5-flash-lite, gemini/gemini-2.0-pro                               |
 
 See [Model Standardization](docs/MODEL_STANDARDIZATION.md) for complete pricing and model details.
 
@@ -263,12 +263,6 @@ llm-router/
 │   ├── provider.go
 │   └── router.go
 ├── utils/                  # Utility functions
-├── docs/                   # Documentation
-│   ├── MODEL_STANDARDIZATION.md
-│   ├── ERROR_HANDLING.md
-│   ├── SEMANTIC_CACHING.md
-│   ├── multi-tenancy-implementation.md
-│   └── streaming-implementation.md
 ├── config.yaml            # Configuration file
 └── main.go
 ```
