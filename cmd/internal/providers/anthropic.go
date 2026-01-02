@@ -70,6 +70,9 @@ func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Messa
 		return nil, translatedErr
 	}
 
+	fmt.Printf("this is the message content: \n %v \n", message.Usage.InputTokens)
+	// anthropic.Usage
+
 	metrics.ProviderRequestsTotal.WithLabelValues(providerName, status).Inc()
 	metrics.ProviderRequestDuration.WithLabelValues(providerName).Observe(duration)
 
