@@ -9,12 +9,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	ProviderOpenAI    = "openai"
-	ProviderAnthropic = "anthropic"
-	ProviderGemini    = "gemini"
-)
-
 var logger = utils.SetUpLogger()
 
 func ConfigureProviders(configs []types.ProviderConfigWithExtras) []types.Provider {
@@ -27,6 +21,17 @@ func ConfigureProviders(configs []types.ProviderConfigWithExtras) []types.Provid
 
 			if config.APIKey == "" || !config.Enabled {
 				logger.Sugar().Errorf("No API Key for %v provider", config.Name)
+				continue
+			}
+
+			// Validate model ID before provider initialization
+			modelProvider, err := ValidateModelID(config.Defaults.Model)
+			if err != nil {
+				logger.Sugar().Errorf("Invalid model for %v provider: %v", config.Name, err)
+				continue
+			}
+			if modelProvider != ProviderOpenAI {
+				logger.Sugar().Errorf("Model %v is not compatible with provider %v (expected %v)", config.Defaults.Model, config.Name, modelProvider)
 				continue
 			}
 
@@ -54,6 +59,17 @@ func ConfigureProviders(configs []types.ProviderConfigWithExtras) []types.Provid
 				continue
 			}
 
+			// Validate model ID before provider initialization
+			modelProvider, err := ValidateModelID(config.Defaults.Model)
+			if err != nil {
+				logger.Sugar().Errorf("Invalid model for %v provider: %v", config.Name, err)
+				continue
+			}
+			if modelProvider != ProviderAnthropic {
+				logger.Sugar().Errorf("Model %v is not compatible with provider %v (expected %v)", config.Defaults.Model, config.Name, modelProvider)
+				continue
+			}
+
 			timeoutMs := config.Timeout
 			timeout := time.Duration(timeoutMs) * time.Millisecond
 
@@ -75,6 +91,17 @@ func ConfigureProviders(configs []types.ProviderConfigWithExtras) []types.Provid
 
 			if config.APIKey == "" || !config.Enabled {
 				logger.Sugar().Errorf("No API Key for %v provider", config.Name)
+				continue
+			}
+
+			// Validate model ID before provider initialization
+			modelProvider, err := ValidateModelID(config.Defaults.Model)
+			if err != nil {
+				logger.Sugar().Errorf("Invalid model for %v provider: %v", config.Name, err)
+				continue
+			}
+			if modelProvider != ProviderGemini {
+				logger.Sugar().Errorf("Model %v is not compatible with provider %v (expected %v)", config.Defaults.Model, config.Name, modelProvider)
 				continue
 			}
 

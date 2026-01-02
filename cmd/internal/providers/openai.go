@@ -209,7 +209,11 @@ func NewOpenAIProvider(config OpenAIConfig) (*OpenAIProvider, error) {
 		option.WithAPIKey(config.APIKey),
 	)
 
-	model := selectOpenAIModel(config.Model)
+	// Map standardized model ID to OpenAI SDK model
+	model, err := MapToOpenAIModel(config.Model)
+	if err != nil {
+		return nil, fmt.Errorf("invalid OpenAI model: %w", err)
+	}
 
 	timeout := config.Timeout
 	if timeout == 0 {
@@ -222,21 +226,4 @@ func NewOpenAIProvider(config OpenAIConfig) (*OpenAIProvider, error) {
 		maxTokens: int64(config.MaxTokens),
 		timeout:   timeout,
 	}, nil
-}
-
-func selectOpenAIModel(model string) string {
-	switch model {
-	case "gpt-5":
-		return openai.ChatModelGPT5_2025_08_07
-	case "gpt-5.1":
-		return openai.ChatModelGPT5_1ChatLatest
-	case "gpt-4o":
-		return openai.ChatModelChatgpt4oLatest
-	case "4o-mini":
-		return openai.ChatModelGPT4oMini
-	case "gpt-3.5":
-		return openai.ChatModelGPT3_5Turbo
-	default:
-		return openai.ChatModelGPT4oMini
-	}
 }

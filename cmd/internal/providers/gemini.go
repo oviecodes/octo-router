@@ -229,7 +229,11 @@ func NewGeminiProvider(config GeminiConfig) (*GeminiProvider, error) {
 		return nil, err
 	}
 
-	model := selectGeminiModel(config.Model)
+	// Map standardized model ID to Gemini API model string
+	model, err := MapToGeminiModel(config.Model)
+	if err != nil {
+		return nil, fmt.Errorf("invalid Gemini model: %w", err)
+	}
 
 	timeout := config.Timeout
 	if config.Timeout == 0 {
@@ -242,17 +246,4 @@ func NewGeminiProvider(config GeminiConfig) (*GeminiProvider, error) {
 		model:     model,
 		timeout:   timeout,
 	}, nil
-}
-
-func selectGeminiModel(model string) string {
-	switch model {
-	case "gemini-2.5":
-		return "gemini-2.5-flash"
-	case "gemini-3":
-		return "gemini-3-pro"
-	case "gemini-2.5-flash-lite":
-		return "gemini-2.5-flash-lite"
-	default:
-		return "gemini-2.5-flash-lite"
-	}
 }

@@ -5,21 +5,29 @@ A production-ready, open-source LLM router built in Go. Route requests across mu
 ## Features
 
 - **Multi-Provider Support**: OpenAI, Anthropic (Claude), and Google Gemini
+- **Standardized Model Naming**: Consistent `provider/model` format with built-in pricing metadata
 - **Flexible Routing**: Round-robin load balancing with support for custom routing strategies
 - **Provider-Specific Defaults**: Configure model and token limits per provider
 - **Input Validation**: Comprehensive request validation with detailed error messages
 - **Token Estimation**: Local token counting using tiktoken (no API calls)
+- **Cost Tracking**: Automatic per-request cost calculation with Prometheus metrics
+- **Resilience**: Circuit breakers, retries with exponential backoff, and error translation
 - **Dynamic Provider Management**: Enable/disable providers without code changes
 - **Health Monitoring**: Built-in health check endpoint
 - **Structured Logging**: Production-ready logging with zap
+- **Streaming Support**: Server-Sent Events for streaming responses
 
 ## Supported Providers
 
-| Provider      | Status    | Models                                           |
-| ------------- | --------- | ------------------------------------------------ |
-| OpenAI        | Supported | gpt-4, gpt-4o, gpt-4o-mini, gpt-3.5-turbo        |
-| Anthropic     | Supported | claude-3-5-sonnet, claude-3-haiku, claude-3-opus |
-| Google Gemini | Supported | gemini-2.5-flash, gemini-1.5-flash, gemini-3-pro |
+All models use the standardized `provider/model` naming format.
+
+| Provider      | Status    | Models                                                                                               |
+| ------------- | --------- | ---------------------------------------------------------------------------------------------------- |
+| OpenAI        | Supported | openai/gpt-5, openai/gpt-5.1, openai/gpt-4o, openai/gpt-4o-mini, openai/gpt-3.5-turbo               |
+| Anthropic     | Supported | anthropic/claude-opus-4.5, anthropic/claude-sonnet-4, anthropic/claude-haiku-4.5, anthropic/claude-haiku-3 |
+| Google Gemini | Supported | gemini/gemini-2.5-flash, gemini/gemini-2.5-flash-lite, gemini/gemini-2.0-pro                        |
+
+See [Model Standardization](docs/MODEL_STANDARDIZATION.md) for complete pricing and model details.
 
 ## Getting Started
 
@@ -57,15 +65,15 @@ providers:
 models:
   defaults:
     openai:
-      model: "gpt-4o-mini"
+      model: "openai/gpt-4o-mini"
       maxTokens: 4096
 
     anthropic:
-      model: "claude-3-5-sonnet-20241022"
+      model: "anthropic/claude-sonnet-4"
       maxTokens: 4096
 
     gemini:
-      model: "gemini-2.5-flash"
+      model: "gemini/gemini-2.5-flash"
       maxTokens: 8192
 
 routing:
@@ -136,7 +144,7 @@ POST /v1/chat/completions
       "content": "What is the capital of France?"
     }
   ],
-  "model": "gpt-4o-mini",
+  "model": "openai/gpt-4o-mini",
   "temperature": 0.7,
   "max_tokens": 1000,
   "stream": false
@@ -256,6 +264,9 @@ llm-router/
 │   └── router.go
 ├── utils/                  # Utility functions
 ├── docs/                   # Documentation
+│   ├── MODEL_STANDARDIZATION.md
+│   ├── ERROR_HANDLING.md
+│   ├── SEMANTIC_CACHING.md
 │   ├── multi-tenancy-implementation.md
 │   └── streaming-implementation.md
 ├── config.yaml            # Configuration file
@@ -266,8 +277,11 @@ llm-router/
 
 1. **Configuration Loading**: At startup, the router loads provider configurations and model defaults from `config.yaml`
 2. **Provider Initialization**: Enabled providers are initialized with their respective API clients
-3. **Request Handling**: Incoming requests are validated, routed to a provider using the configured strategy, and responses are normalized
-4. **Error Handling**: Validation errors and provider failures are handled gracefully with structured error responses
+3. **Model Validation**: Model names are validated against the centralized model catalog with pricing metadata
+4. **Request Handling**: Incoming requests are validated, routed to a provider using the configured strategy, and responses are normalized
+5. **Error Handling**: Provider-specific errors are translated to domain errors with retry logic
+6. **Resilience**: Circuit breakers track provider health, retries handle transient failures
+7. **Metrics**: Prometheus metrics track requests, latency, costs, and circuit breaker state
 
 ### Routing Strategies
 
@@ -331,14 +345,15 @@ export APP_ENV="development"  # or "production"
 
 ## Roadmap
 
-- Streaming support (Server-Sent Events) [Done]
-- Proper error handling for different types of Error [Done]
-- Circuit breaker for provider failures [Done]
-- [ ] Request/response caching
-- [ ] Cost tracking and reporting
+- [x] Streaming support (Server-Sent Events)
+- [x] Proper error handling for different types of Error
+- [x] Circuit breaker for provider failures
+- [x] Model standardization with pricing metadata
+- [x] Metrics and observability (Prometheus)
+- [ ] Request/response caching (semantic caching planned)
+- [ ] Cost tracking and reporting (cost calculation implemented)
 - [ ] Rate limiting per provider
 - [ ] Custom routing strategies
-- [ ] Metrics and observability (Prometheus)
 - [ ] Function/Tool calling support
 - [ ] Multi-tenancy support
 

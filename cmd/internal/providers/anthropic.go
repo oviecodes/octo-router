@@ -218,7 +218,11 @@ func NewAnthropicProvider(config AnthropicConfig) (*AnthropicProvider, error) {
 		option.WithAPIKey(config.APIKey),
 	)
 
-	model := selectAnthropicModel(config.Model)
+	// Map standardized model ID to Anthropic SDK model
+	model, err := MapToAnthropicModel(config.Model)
+	if err != nil {
+		return nil, fmt.Errorf("invalid Anthropic model: %w", err)
+	}
 
 	timeout := config.Timeout
 	if timeout == 0 {
@@ -231,17 +235,4 @@ func NewAnthropicProvider(config AnthropicConfig) (*AnthropicProvider, error) {
 		maxTokens: int64(config.MaxTokens),
 		timeout:   timeout,
 	}, nil
-}
-
-func selectAnthropicModel(model string) anthropic.Model {
-	switch model {
-	case "opus":
-		return anthropic.ModelClaudeOpus4_5_20251101
-	case "sonnet":
-		return anthropic.ModelClaude4Sonnet20250514
-	case "haiku":
-		return anthropic.ModelClaudeHaiku4_5_20251001
-	default:
-		return anthropic.ModelClaude_3_Haiku_20240307
-	}
 }
