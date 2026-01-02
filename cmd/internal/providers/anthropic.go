@@ -23,10 +23,11 @@ type AnthropicConfig struct {
 }
 
 type AnthropicProvider struct {
-	client    anthropic.Client
-	model     anthropic.Model
-	maxTokens int64
-	timeout   time.Duration
+	client          anthropic.Client
+	model           anthropic.Model // SDK model
+	standardModelID string          // Standardized model ID for cost calculation
+	maxTokens       int64
+	timeout         time.Duration
 }
 
 func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
@@ -70,11 +71,34 @@ func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Messa
 		return nil, translatedErr
 	}
 
-	fmt.Printf("this is the message content: \n %v \n", message.Usage.InputTokens)
-	// anthropic.Usage
-
 	metrics.ProviderRequestsTotal.WithLabelValues(providerName, status).Inc()
 	metrics.ProviderRequestDuration.WithLabelValues(providerName).Observe(duration)
+
+	// Track token usage
+	inputTokens := int(message.Usage.InputTokens)
+	outputTokens := int(message.Usage.OutputTokens)
+
+	metrics.ProviderTokensUsed.WithLabelValues(providerName, "input").Add(float64(inputTokens))
+	metrics.ProviderTokensUsed.WithLabelValues(providerName, "output").Add(float64(outputTokens))
+
+	// Calculate and track cost
+	cost, err := CalculateCost(a.standardModelID, inputTokens, outputTokens)
+	if err != nil {
+		logger.Warn("Failed to calculate cost",
+			zap.String("provider", providerName),
+			zap.String("model", a.standardModelID),
+			zap.Error(err),
+		)
+	} else {
+		metrics.ProviderCostTotal.WithLabelValues(providerName).Add(cost)
+		logger.Debug("Request cost calculated",
+			zap.String("provider", providerName),
+			zap.String("model", a.standardModelID),
+			zap.Int("input_tokens", inputTokens),
+			zap.Int("output_tokens", outputTokens),
+			zap.Float64("cost_usd", cost),
+		)
+	}
 
 	response := a.convertToRouterMessage(message)
 	return response, nil
@@ -218,7 +242,6 @@ func NewAnthropicProvider(config AnthropicConfig) (*AnthropicProvider, error) {
 		option.WithAPIKey(config.APIKey),
 	)
 
-	// Map standardized model ID to Anthropic SDK model
 	model, err := MapToAnthropicModel(config.Model)
 	if err != nil {
 		return nil, fmt.Errorf("invalid Anthropic model: %w", err)
@@ -230,9 +253,10 @@ func NewAnthropicProvider(config AnthropicConfig) (*AnthropicProvider, error) {
 	}
 
 	return &AnthropicProvider{
-		client:    client,
-		model:     model,
-		maxTokens: int64(config.MaxTokens),
-		timeout:   timeout,
+		client:          client,
+		model:           model,
+		standardModelID: config.Model,
+		maxTokens:       int64(config.MaxTokens),
+		timeout:         timeout,
 	}, nil
 }

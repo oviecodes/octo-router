@@ -22,10 +22,11 @@ type GeminiConfig struct {
 }
 
 type GeminiProvider struct {
-	client    *genai.Client
-	maxTokens int64
-	model     string
-	timeout   time.Duration
+	client          *genai.Client
+	maxTokens       int64
+	model           string // SDK model string
+	standardModelID string // Standardized model ID for cost calculation
+	timeout         time.Duration
 }
 
 func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
@@ -98,6 +99,34 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 
 	metrics.ProviderRequestsTotal.WithLabelValues(providerName, status).Inc()
 	metrics.ProviderRequestDuration.WithLabelValues(providerName).Observe(duration)
+
+	// Track token usage if available
+	if res.UsageMetadata != nil {
+		inputTokens := int(res.UsageMetadata.PromptTokenCount)
+		outputTokens := int(res.UsageMetadata.CandidatesTokenCount)
+
+		metrics.ProviderTokensUsed.WithLabelValues(providerName, "input").Add(float64(inputTokens))
+		metrics.ProviderTokensUsed.WithLabelValues(providerName, "output").Add(float64(outputTokens))
+
+		// Calculate and track cost
+		cost, err := CalculateCost(g.standardModelID, inputTokens, outputTokens)
+		if err != nil {
+			logger.Warn("Failed to calculate cost",
+				zap.String("provider", providerName),
+				zap.String("model", g.standardModelID),
+				zap.Error(err),
+			)
+		} else {
+			metrics.ProviderCostTotal.WithLabelValues(providerName).Add(cost)
+			logger.Debug("Request cost calculated",
+				zap.String("provider", providerName),
+				zap.String("model", g.standardModelID),
+				zap.Int("input_tokens", inputTokens),
+				zap.Int("output_tokens", outputTokens),
+				zap.Float64("cost_usd", cost),
+			)
+		}
+	}
 
 	response = g.convertToRouterMessage(res.Candidates[0].Content.Parts[0].Text)
 	return response, nil
@@ -241,9 +270,10 @@ func NewGeminiProvider(config GeminiConfig) (*GeminiProvider, error) {
 	}
 
 	return &GeminiProvider{
-		client:    client,
-		maxTokens: config.MaxTokens,
-		model:     model,
-		timeout:   timeout,
+		client:          client,
+		maxTokens:       config.MaxTokens,
+		model:           model,
+		standardModelID: config.Model, // Store standardized model ID for cost calculation
+		timeout:         timeout,
 	}, nil
 }

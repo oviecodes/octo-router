@@ -23,10 +23,11 @@ type OpenAIConfig struct {
 }
 
 type OpenAIProvider struct {
-	maxTokens int64
-	client    openai.Client
-	model     string
-	timeout   time.Duration
+	maxTokens       int64
+	client          openai.Client
+	model           string // SDK model string
+	standardModelID string // Standardized model ID for cost calculation
+	timeout         time.Duration
 }
 
 func (o *OpenAIProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
@@ -69,6 +70,32 @@ func (o *OpenAIProvider) Complete(ctx context.Context, messages []types.Message)
 
 	metrics.ProviderRequestsTotal.WithLabelValues(providerName, status).Inc()
 	metrics.ProviderRequestDuration.WithLabelValues(providerName).Observe(duration)
+
+	// Track token usage
+	inputTokens := int(chatCompletion.Usage.PromptTokens)
+	outputTokens := int(chatCompletion.Usage.CompletionTokens)
+
+	metrics.ProviderTokensUsed.WithLabelValues(providerName, "input").Add(float64(inputTokens))
+	metrics.ProviderTokensUsed.WithLabelValues(providerName, "output").Add(float64(outputTokens))
+
+	// Calculate and track cost
+	cost, err := CalculateCost(o.standardModelID, inputTokens, outputTokens)
+	if err != nil {
+		logger.Warn("Failed to calculate cost",
+			zap.String("provider", providerName),
+			zap.String("model", o.standardModelID),
+			zap.Error(err),
+		)
+	} else {
+		metrics.ProviderCostTotal.WithLabelValues(providerName).Add(cost)
+		logger.Debug("Request cost calculated",
+			zap.String("provider", providerName),
+			zap.String("model", o.standardModelID),
+			zap.Int("input_tokens", inputTokens),
+			zap.Int("output_tokens", outputTokens),
+			zap.Float64("cost_usd", cost),
+		)
+	}
 
 	response := o.convertToRouterMessage(chatCompletion)
 	return &response, nil
@@ -221,9 +248,10 @@ func NewOpenAIProvider(config OpenAIConfig) (*OpenAIProvider, error) {
 	}
 
 	return &OpenAIProvider{
-		client:    client,
-		model:     model,
-		maxTokens: int64(config.MaxTokens),
-		timeout:   timeout,
+		client:          client,
+		model:           model,
+		standardModelID: config.Model, // Store standardized model ID for cost calculation
+		maxTokens:       int64(config.MaxTokens),
+		timeout:         timeout,
 	}, nil
 }
