@@ -23,7 +23,7 @@ type config struct {
 	backoffMultiplier int
 }
 
-func Do[T any](ctx context.Context, r *Retry, handler func(context.Context) (T, error)) (T, error) {
+func Do[T any](ctx context.Context, provider string, r *Retry, handler func(context.Context) (T, error)) (T, error) {
 
 	var result T
 	var lastErr error
@@ -40,13 +40,13 @@ func Do[T any](ctx context.Context, r *Retry, handler func(context.Context) (T, 
 
 		if err == nil {
 			if attempt > 0 {
-				metrics.RetryAttemptsTotal.WithLabelValues("Unknown", "success").Inc()
+				metrics.RetryAttemptsTotal.WithLabelValues(provider, "success").Inc()
 			}
 			return res, nil
 		}
 
 		if attempt > 0 {
-			metrics.RetryAttemptsTotal.WithLabelValues("unknown", "attempt").Inc()
+			metrics.RetryAttemptsTotal.WithLabelValues(provider, "attempt").Inc()
 		}
 
 		lastErr = err
@@ -72,7 +72,7 @@ func Do[T any](ctx context.Context, r *Retry, handler func(context.Context) (T, 
 		}
 	}
 
-	metrics.RetryAttemptsTotal.WithLabelValues("unknown", "failure").Inc()
+	metrics.RetryAttemptsTotal.WithLabelValues(provider, "failure").Inc()
 	return result, fmt.Errorf("max retry attempts (%d) exceeded: %w", r.config.maxAttempts, lastErr)
 }
 

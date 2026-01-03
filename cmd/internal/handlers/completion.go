@@ -101,7 +101,7 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 		HandleStreamingCompletion(resolver, c, provider, request)
 	} else {
 
-		response, err := resilience.Do(c, retry, func(ctx context.Context) (*types.Message, error) {
+		response, err := resilience.Do(c, providerName, retry, func(ctx context.Context) (*types.Message, error) {
 			return provider.Complete(c.Request.Context(), request.Messages)
 		})
 
