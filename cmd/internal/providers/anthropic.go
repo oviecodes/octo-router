@@ -7,6 +7,7 @@ import (
 	"llm-router/cmd/internal/metrics"
 	providererrors "llm-router/cmd/internal/provider_errors"
 	"llm-router/types"
+	"llm-router/utils"
 	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
@@ -14,6 +15,8 @@ import (
 	"github.com/pkoukk/tiktoken-go"
 	"go.uber.org/zap"
 )
+
+var logger = utils.SetUpLogger()
 
 type AnthropicConfig struct {
 	APIKey    string

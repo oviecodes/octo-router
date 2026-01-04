@@ -5,25 +5,26 @@ import (
 	"fmt"
 	"llm-router/cmd/internal/providers"
 	"llm-router/types"
-	"os"
 	"sync"
+
+	"go.uber.org/zap"
 )
 
 type RoundRobinRouter struct {
-	providers []types.Provider
-	mu        sync.Mutex
-	current   int
+	providerManager *providers.ProviderManager
+	mu              sync.Mutex
+	current         int
 }
-
-// var logger = utils.SetUpLogger()
 
 func (r *RoundRobinRouter) SelectProvider(ctx context.Context, circuits map[string]types.CircuitBreaker) (types.Provider, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	for range r.providers {
-		provider := r.providers[r.current]
-		r.current = (r.current + 1) % len(r.providers)
+	providerList := r.providerManager.GetProviders()
+
+	for range providerList {
+		provider := providerList[r.current]
+		r.current = (r.current + 1) % len(providerList)
 
 		breaker, ok := circuits[provider.GetProviderName()]
 
@@ -37,17 +38,26 @@ func (r *RoundRobinRouter) SelectProvider(ctx context.Context, circuits map[stri
 	return nil, fmt.Errorf("no available providers")
 }
 
-func NewRoundRobinRouter(config types.RouterConfig) (*RoundRobinRouter, error) {
-	providers := providers.ConfigureProviders(config.Providers)
-
-	// check length  of providers if == 0; throw error and exit the application
-	if len(providers) == 0 {
-		logger.Error("Could not set up any providers")
-		os.Exit(1)
+func NewRoundRobinRouter(providerManager *providers.ProviderManager) (*RoundRobinRouter, error) {
+	if providerManager == nil {
+		return nil, fmt.Errorf("provider manager cannot be nil")
 	}
 
+	if providerManager.GetProviderCount() == 0 {
+		return nil, fmt.Errorf("provider manager has no providers")
+	}
+
+	logger.Info("Round-robin router initialized",
+		zap.Int("provider_count", providerManager.GetProviderCount()),
+		zap.Strings("providers", providerManager.ListProviderNames()),
+	)
+
 	return &RoundRobinRouter{
-		current:   0,
-		providers: providers,
+		current:         0,
+		providerManager: providerManager,
 	}, nil
+}
+
+func (r *RoundRobinRouter) GetProviderManager() *providers.ProviderManager {
+	return r.providerManager
 }

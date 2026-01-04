@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"llm-router/cmd/internal/providers"
 	"llm-router/types"
 	"testing"
 )
@@ -38,13 +39,19 @@ func TestRoundRobinSelection(t *testing.T) {
 		&mockProvider{name: "provider3"},
 	}
 
+	// Create manager and inject test providers
+	factory := providers.NewProviderFactory()
+	manager := providers.NewProviderManager(factory)
+	manager.SetProvidersForTest(allProviders)
+
 	router := &RoundRobinRouter{
-		providers: allProviders,
-		current:   0,
+		providerManager: manager,
+		current:         0,
 	}
 
+	// Create circuit breakers that allow all mock providers
 	circuitBreakers := map[string]types.CircuitBreaker{
-		"openai": nil,
+		"mock-ai": &mockCircuitBreaker{canExecute: true},
 	}
 
 	// Test round-robin distribution
@@ -70,24 +77,50 @@ func TestRoundRobinSelection(t *testing.T) {
 }
 
 func TestRoundRobinWithSingleProvider(t *testing.T) {
-	providers := []types.Provider{
+	mockProviders := []types.Provider{
 		&mockProvider{name: "solo"},
 	}
 
+	// Create manager and inject test providers
+	factory := providers.NewProviderFactory()
+	manager := providers.NewProviderManager(factory)
+	manager.SetProvidersForTest(mockProviders)
+
 	router := &RoundRobinRouter{
-		providers: providers,
-		current:   0,
+		providerManager: manager,
+		current:         0,
 	}
 
+	// Create circuit breaker that allows the mock provider
 	circuitBreakers := map[string]types.CircuitBreaker{
-		"openai": nil,
+		"mock-ai": &mockCircuitBreaker{canExecute: true},
 	}
 
 	// Should always return the same provider
 	for i := range 5 {
 		selected, _ := router.SelectProvider(context.Background(), circuitBreakers)
-		if selected != providers[0] {
+		if selected != mockProviders[0] {
 			t.Errorf("Expected solo provider, got different provider on iteration %d", i)
 		}
 	}
+}
+
+// Mock circuit breaker for testing
+type mockCircuitBreaker struct {
+	canExecute bool
+}
+
+func (m *mockCircuitBreaker) CanExecute() bool {
+	return m.canExecute
+}
+
+func (m *mockCircuitBreaker) Execute(err error) {
+	// Mock implementation - does nothing
+}
+
+func (m *mockCircuitBreaker) GetState() string {
+	if m.canExecute {
+		return "closed"
+	}
+	return "open"
 }

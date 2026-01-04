@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"llm-router/cmd/internal/cache"
+	"llm-router/cmd/internal/providers"
 	"llm-router/cmd/internal/resilience"
 	"llm-router/cmd/internal/router"
 	"llm-router/config"
@@ -21,15 +22,17 @@ type ConfigResolver interface {
 	GetCache(c *gin.Context) cache.Cache
 	GetRetry(c *gin.Context) *resilience.Retry
 	GetCircuitBreaker(c *gin.Context) map[string]types.CircuitBreaker
+	GetProviderManager(c *gin.Context) *providers.ProviderManager
 }
 
 type App struct {
-	Config  *config.Config
-	Router  router.Router
-	Logger  *zap.Logger
-	Cache   cache.Cache
-	Retry   *resilience.Retry
-	Circuit map[string]types.CircuitBreaker
+	Config          *config.Config
+	Router          router.Router
+	Logger          *zap.Logger
+	Cache           cache.Cache
+	Retry           *resilience.Retry
+	Circuit         map[string]types.CircuitBreaker
+	ProviderManager *providers.ProviderManager
 }
 
 var logger = utils.SetUpLogger()
@@ -45,8 +48,15 @@ func SetUpApp() *App {
 		os.Exit(1)
 	}
 
-	// Initialize router once at startup
-	llmRouter, err := initializeRouter(cfg)
+	// Initialize provider manager
+	providerManager, err := initializeProviderManager(cfg)
+	if err != nil {
+		logger.Error("Failed to initialize providers", zap.Error(err))
+		os.Exit(1)
+	}
+
+	// Initialize router with provider manager
+	llmRouter, err := initializeRouter(cfg, providerManager)
 	if err != nil {
 		logger.Error("Failed to initialize router", zap.Error(err))
 		os.Exit(1)
@@ -62,53 +72,67 @@ func SetUpApp() *App {
 		}
 	}
 
-	// fmt.Printf("Current cache instance %v \n", cacheInstance)
-
 	resillienceConfig := cfg.GetResilienceConfigData()
 	retry := resilience.NewRetryHandler(resillienceConfig.RetriesConfig, logger)
 	circuit := initializeCircuitBreakers(cfg)
 
 	// Create app with all dependencies
 	app := &App{
-		Config:  cfg,
-		Router:  llmRouter,
-		Logger:  logger,
-		Cache:   cacheInstance,
-		Retry:   retry,
-		Circuit: circuit,
+		Config:          cfg,
+		Router:          llmRouter,
+		Logger:          logger,
+		Cache:           cacheInstance,
+		Retry:           retry,
+		Circuit:         circuit,
+		ProviderManager: providerManager,
 	}
 
 	return app
 }
 
-func initializeRouter(cfg *config.Config) (router.Router, error) {
+func initializeProviderManager(cfg *config.Config) (*providers.ProviderManager, error) {
 	enabled := cfg.GetEnabledProviders()
-	routerStrategy := cfg.GetRouterStrategy()
-
-	fmt.Printf("All Routing configs %v \n", *cfg)
 
 	if len(enabled) == 0 {
 		return nil, fmt.Errorf("no enabled providers found in config")
 	}
 
-	routerConfig := types.RouterConfig{
-		Providers: enabled,
+	// Create factory and manager
+	factory := providers.NewProviderFactory()
+	manager := providers.NewProviderManager(factory)
+
+	// Initialize providers
+	if err := manager.Initialize(enabled); err != nil {
+		return nil, fmt.Errorf("failed to initialize providers: %w", err)
 	}
 
-	router, err := router.ConfigureRouterStrategy(routerStrategy, &routerConfig)
+	logger.Info("Provider manager initialized",
+		zap.Int("provider_count", manager.GetProviderCount()),
+		zap.Strings("providers", manager.ListProviderNames()),
+	)
 
-	return router, err
+	return manager, nil
+}
+
+func initializeRouter(cfg *config.Config, providerManager *providers.ProviderManager) (router.Router, error) {
+	routerStrategy := cfg.GetRouterStrategy()
+
+	logger.Info("Initializing router", zap.String("strategy", routerStrategy.Strategy))
+
+	llmRouter, err := router.ConfigureRouterStrategy(routerStrategy, providerManager)
+
+	return llmRouter, err
 }
 
 func initializeCircuitBreakers(cfg *config.Config) map[string]types.CircuitBreaker {
 	enabled := cfg.GetEnabledProviders()
 	resillienceConfig := cfg.GetResilienceConfigData()
-	providers := make([]string, len(enabled))
+	providerNames := make([]string, len(enabled))
 
 	for _, provider := range enabled {
-		providers = append(providers, provider.Name)
+		providerNames = append(providerNames, provider.Name)
 	}
 
-	circuit := resilience.NewCircuitBreakers(providers, resillienceConfig.CircuitBreakerConfig)
+	circuit := resilience.NewCircuitBreakers(providerNames, resillienceConfig.CircuitBreakerConfig)
 	return circuit
 }

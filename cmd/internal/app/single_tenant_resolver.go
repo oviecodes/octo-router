@@ -2,6 +2,7 @@ package app
 
 import (
 	"llm-router/cmd/internal/cache"
+	"llm-router/cmd/internal/providers"
 	"llm-router/cmd/internal/resilience"
 	"llm-router/cmd/internal/router"
 	"llm-router/config"
@@ -37,4 +38,8 @@ func (s *SingleTenantResolver) GetRetry(c *gin.Context) *resilience.Retry {
 
 func (s *SingleTenantResolver) GetCircuitBreaker(c *gin.Context) map[string]types.CircuitBreaker {
 	return s.App.Circuit
+}
+
+func (s *SingleTenantResolver) GetProviderManager(c *gin.Context) *providers.ProviderManager {
+	return s.App.ProviderManager
 }

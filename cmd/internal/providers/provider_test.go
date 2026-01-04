@@ -11,7 +11,7 @@ var providerConfigs = []types.ProviderConfigWithExtras{
 		APIKey:  "sk-****",
 		Enabled: true,
 		Defaults: &types.ProviderExtra{
-			Model:     "",
+			Model:     "openai/gpt-4o-mini",
 			MaxTokens: 1024,
 		},
 	},
@@ -20,7 +20,7 @@ var providerConfigs = []types.ProviderConfigWithExtras{
 		APIKey:  "AIza-****",
 		Enabled: true,
 		Defaults: &types.ProviderExtra{
-			Model:     "gemini-1.5-flash",
+			Model:     "gemini/gemini-2.5-flash",
 			MaxTokens: 1024,
 		},
 	},
@@ -29,15 +29,16 @@ var providerConfigs = []types.ProviderConfigWithExtras{
 		APIKey:  "sk-****",
 		Enabled: true,
 		Defaults: &types.ProviderExtra{
-			Model:     "haiku",
+			Model:     "anthropic/claude-haiku-3",
 			MaxTokens: 1024,
 		},
 	},
 }
 
-// configure providers
-func TestConfigureProviders(t *testing.T) {
-	providers := ConfigureProviders(providerConfigs)
+// Test provider factory
+func TestProviderFactory(t *testing.T) {
+	factory := NewProviderFactory()
+	providers := factory.CreateProviders(providerConfigs)
 
 	// should return all providers properly
 	if len(providers) != len(providerConfigs) {
@@ -45,7 +46,7 @@ func TestConfigureProviders(t *testing.T) {
 	}
 }
 
-func TestConfigureProvidersWithUnknownProvider(t *testing.T) {
+func TestProviderFactoryWithUnknownProvider(t *testing.T) {
 	configs := []types.ProviderConfigWithExtras{
 		{
 			Name:    "unknown-provider",
@@ -58,7 +59,8 @@ func TestConfigureProvidersWithUnknownProvider(t *testing.T) {
 		},
 	}
 
-	providers := ConfigureProviders(configs)
+	factory := NewProviderFactory()
+	providers := factory.CreateProviders(configs)
 
 	// Should skip unknown providers
 	if len(providers) != 0 {
@@ -66,20 +68,21 @@ func TestConfigureProvidersWithUnknownProvider(t *testing.T) {
 	}
 }
 
-func TestConfigureProvidersWithInvalidAPIKey(t *testing.T) {
+func TestProviderFactoryWithInvalidAPIKey(t *testing.T) {
 	configs := []types.ProviderConfigWithExtras{
 		{
 			Name:    "openai",
 			APIKey:  "",
 			Enabled: true,
 			Defaults: &types.ProviderExtra{
-				Model:     "gpt-4o-mini",
+				Model:     "openai/gpt-4o-mini",
 				MaxTokens: 1024,
 			},
 		},
 	}
 
-	providers := ConfigureProviders(configs)
+	factory := NewProviderFactory()
+	providers := factory.CreateProviders(configs)
 
 	// Should skip invalid providers
 	if len(providers) != 0 {

@@ -2,6 +2,7 @@ package app
 
 import (
 	"llm-router/cmd/internal/cache"
+	"llm-router/cmd/internal/providers"
 	"llm-router/cmd/internal/resilience"
 	"llm-router/cmd/internal/router"
 	"llm-router/config"
@@ -30,7 +31,8 @@ func (m *MultiTenantResolver) GetConfig(c *gin.Context) *config.Config {
 // if not fetch cfg from database and configure router properly
 func (m *MultiTenantResolver) GetRouter(c *gin.Context) router.Router {
 	// cfg := m.GetConfig(c)
-	// router, _ := initializeRouter(cfg)
+	// providerManager, _ := initializeProviderManager(cfg)
+	// router, _ := initializeRouter(cfg, providerManager)
 	// return router
 
 	return nil
@@ -49,5 +51,9 @@ func (m *MultiTenantResolver) GetRetry(c *gin.Context) *resilience.Retry {
 }
 
 func (m *MultiTenantResolver) GetCircuitBreaker(c *gin.Context) map[string]types.CircuitBreaker {
+	return nil
+}
+
+func (m *MultiTenantResolver) GetProviderManager(c *gin.Context) *providers.ProviderManager {
 	return nil
 }
