@@ -7,6 +7,7 @@ A production-ready, open-source LLM router built in Go. Route requests across mu
 - **Multi-Provider Support**: OpenAI, Anthropic (Claude), and Google Gemini
 - **Standardized Model Naming**: Consistent `provider/model` format with built-in pricing metadata
 - **Flexible Routing**: Round-robin load balancing with support for custom routing strategies
+- **Fallback Chain**: Automatic failover to backup providers when primary provider fails
 - **Provider-Specific Defaults**: Configure model and token limits per provider
 - **Input Validation**: Comprehensive request validation with detailed error messages
 - **Token Estimation**: Local token counting using tiktoken (no API calls)
@@ -78,6 +79,10 @@ models:
 
 routing:
   strategy: round-robin
+  fallbacks:
+    - anthropic
+    - gemini
+    - openai
 
 resilience:
   timeout: 30000
@@ -269,13 +274,14 @@ llm-router/
 
 ### How It Works
 
-1. **Configuration Loading**: At startup, the router loads provider configurations and model defaults from `config.yaml`
+1. **Configuration Loading**: At startup, the router loads provider configurations, model defaults, and fallback chain from `config.yaml`
 2. **Provider Initialization**: Enabled providers are initialized with their respective API clients
 3. **Model Validation**: Model names are validated against the centralized model catalog with pricing metadata
 4. **Request Handling**: Incoming requests are validated, routed to a provider using the configured strategy, and responses are normalized
-5. **Error Handling**: Provider-specific errors are translated to domain errors with retry logic
-6. **Resilience**: Circuit breakers track provider health, retries handle transient failures
-7. **Metrics**: Prometheus metrics track requests, latency, costs, and circuit breaker state
+5. **Fallback Chain**: If a provider fails, the router automatically tries fallback providers in the configured order
+6. **Error Handling**: Provider-specific errors are translated to domain errors with retry logic
+7. **Resilience**: Circuit breakers track provider health, retries handle transient failures
+8. **Metrics**: Prometheus metrics track requests, latency, costs, and circuit breaker state
 
 ### Routing Strategies
 
@@ -288,6 +294,49 @@ Planned:
 - Cost-based routing
 - Latency-based routing
 - Provider-specific routing rules
+
+### Fallback Chain
+
+The fallback chain provides automatic failover when the primary provider fails, ensuring high availability and reliability.
+
+**How It Works:**
+
+1. **Provider Selection**: The router selects a primary provider using the configured routing strategy (e.g., round-robin)
+2. **Fallback Chain Building**: A fallback chain is built by combining the primary provider with the configured fallback providers from `config.yaml`
+3. **Sequential Retry**: If the primary provider fails, the router automatically tries each fallback provider in order
+4. **Circuit Breaker Integration**: Each provider's circuit breaker state is checked and updated during the fallback process
+5. **Deduplication**: The chain automatically prevents duplicate providers (e.g., if primary is already in fallback list)
+6. **Immediate Success Return**: The first successful provider response is returned immediately
+7. **All-Failed Error**: Only returns an error if all providers in the chain fail
+
+**Configuration:**
+
+```yaml
+routing:
+  strategy: round-robin
+  fallbacks:
+    - anthropic  # Try Anthropic first if primary fails
+    - gemini     # Then try Gemini
+    - openai     # Finally try OpenAI
+```
+
+**Example Flow:**
+
+1. Round-robin selects `openai` as primary
+2. Fallback chain built: `[openai, anthropic, gemini]`
+3. OpenAI fails → automatically retries with Anthropic
+4. Anthropic succeeds → returns response immediately
+5. Circuit breaker updated for both OpenAI (failure) and Anthropic (success)
+
+**Benefits:**
+
+- **High Availability**: Requests succeed even when providers are down
+- **Transparent Failover**: Clients don't need to handle provider failures
+- **Cost Optimization**: Configure cheaper providers as fallbacks
+- **Latency Management**: Try faster providers before slower ones
+- **Comprehensive Logging**: Detailed logs track each fallback attempt with provider names, error details, and remaining providers
+
+**Note**: Fallback chain works for both streaming and non-streaming completions. Each provider in the chain respects the configured retry policy and circuit breaker settings.
 
 ## Validation
 
@@ -342,6 +391,7 @@ export APP_ENV="development"  # or "production"
 - [x] Streaming support (Server-Sent Events)
 - [x] Proper error handling for different types of Error
 - [x] Circuit breaker for provider failures
+- [x] Fallback chain for automatic provider failover
 - [x] Model standardization with pricing metadata
 - [x] Metrics and observability (Prometheus)
 - [ ] Request/response caching (semantic caching planned)
