@@ -12,26 +12,28 @@ import (
 
 type Router interface {
 	SelectProvider(ctx context.Context, circuits map[string]types.CircuitBreaker) (types.Provider, error)
+	GetProviderManager() *providers.ProviderManager
 }
 
 var logger = utils.SetUpLogger()
 
-func ConfigureRouterStrategy(routingData *types.RoutingData, providerManager *providers.ProviderManager) (Router, error) {
+func ConfigureRouterStrategy(routingData *types.RoutingData, providerManager *providers.ProviderManager) (Router, []string, error) {
+
+	var routerStrategy Router
+
 	switch routingData.Strategy {
 	case "round-robin":
 		router, err := NewRoundRobinRouter(providerManager)
 
 		if err != nil {
 			logger.Error("Could not set up the round-robin router", zap.Error(err))
-			return nil, err
+			return nil, nil, err
 		}
 
-		return router, nil
+		routerStrategy = router
 	default:
-		return nil, fmt.Errorf("unsupported routing strategy: %s (supported: round-robin)", routingData.Strategy)
+		return nil, nil, fmt.Errorf("unsupported routing strategy: %s (supported: round-robin)", routingData.Strategy)
 	}
-}
 
-func ConfigureRouterFallbacks() {
-
+	return routerStrategy, routingData.Fallbacks, nil
 }

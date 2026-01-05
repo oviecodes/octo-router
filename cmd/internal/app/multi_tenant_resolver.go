@@ -57,3 +57,7 @@ func (m *MultiTenantResolver) GetCircuitBreaker(c *gin.Context) map[string]types
 func (m *MultiTenantResolver) GetProviderManager(c *gin.Context) *providers.ProviderManager {
 	return nil
 }
+
+func (m *MultiTenantResolver) GetFallbackChain(c *gin.Context) []string {
+	return nil
+}

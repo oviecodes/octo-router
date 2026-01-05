@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"llm-router/cmd/internal/app"
+	"llm-router/cmd/internal/providers"
 	"llm-router/cmd/internal/resilience"
 	"llm-router/cmd/internal/validations"
 	"llm-router/types"
@@ -12,6 +13,31 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
+
+func buildProviderChain(primaryProvider types.Provider, fallbackNames []string, manager *providers.ProviderManager) []types.Provider {
+	providerChain := make([]types.Provider, 0, len(fallbackNames)+1)
+	seen := make(map[string]bool)
+
+	primaryName := primaryProvider.GetProviderName()
+	providerChain = append(providerChain, primaryProvider)
+	seen[primaryName] = true
+
+	for _, fallbackName := range fallbackNames {
+		if seen[fallbackName] {
+			continue
+		}
+
+		fallbackProvider, err := manager.GetProvider(fallbackName)
+		if err != nil {
+			continue
+		}
+
+		providerChain = append(providerChain, fallbackProvider)
+		seen[fallbackName] = true
+	}
+
+	return providerChain
+}
 
 func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, provider types.Provider, request types.Completion) {
 	c.Header("Content-Type", "text/event-stream")
@@ -85,51 +111,76 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"error": "no available providers, cannot process requests",
 		})
-
 		return
 	}
 
-	providerName := provider.GetProviderName()
-	circuitBreaker := circuitBreakers[providerName]
+	providerChain := buildProviderChain(provider, resolver.GetFallbackChain(c), resolver.GetProviderManager(c))
 
-	resolver.GetLogger(c).Debug("Circuit breaker state",
-		zap.String("provider", providerName),
-		zap.Any("Circuit Breaker", circuitBreaker),
+	resolver.GetLogger(c).Info("Provider chain built",
+		zap.Int("chain_length", len(providerChain)),
+		zap.String("primary_provider", provider.GetProviderName()),
 	)
 
 	if request.Stream {
 		HandleStreamingCompletion(resolver, c, provider, request)
-	} else {
+		return
+	}
 
-		response, err := resilience.Do(c, providerName, retry, func(ctx context.Context) (*types.Message, error) {
-			return provider.Complete(c.Request.Context(), request.Messages)
-		})
+	var lastErr error
 
-		resolver.GetLogger(c).Debug("Provider response",
-			zap.String("provider_type", fmt.Sprintf("%T", provider)),
-			zap.Error(err),
+	for i, currentProvider := range providerChain {
+		currentProviderName := currentProvider.GetProviderName()
+		currentCircuitBreaker := circuitBreakers[currentProviderName]
+
+		resolver.GetLogger(c).Debug("Trying provider",
+			zap.Int("attempt", i+1),
+			zap.Int("total", len(providerChain)),
+			zap.String("provider", currentProviderName),
+			zap.String("circuit_state", currentCircuitBreaker.GetState()),
 		)
 
-		circuitBreaker.Execute(err)
+		response, err := resilience.Do(c, currentProviderName, retry, func(ctx context.Context) (*types.Message, error) {
+			return currentProvider.Complete(c.Request.Context(), request.Messages)
+		})
+
+		currentCircuitBreaker.Execute(err)
 
 		if err != nil {
-			resolver.GetLogger(c).Error("Provider completion failed", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": err.Error(),
-			})
-			return
+			resolver.GetLogger(c).Warn("Provider failed, trying next in chain",
+				zap.String("provider", currentProviderName),
+				zap.Error(err),
+				zap.Int("remaining_providers", len(providerChain)-i-1),
+			)
+			lastErr = err
+			continue
 		}
+
+		resolver.GetLogger(c).Info("Provider succeeded",
+			zap.String("provider", currentProviderName),
+			zap.Int("attempt_number", i+1),
+		)
 
 		c.JSON(http.StatusOK, gin.H{
 			"message":  response.Content,
 			"role":     response.Role,
-			"provider": fmt.Sprintf("%T", provider),
+			"provider": currentProviderName,
 		})
+		return
 	}
+
+	resolver.GetLogger(c).Error("All providers in fallback chain failed",
+		zap.Int("providers_tried", len(providerChain)),
+		zap.Error(lastErr),
+	)
+
+	c.JSON(http.StatusInternalServerError, gin.H{
+		"error":       "All providers in fallback chain failed",
+		"last_error":  lastErr.Error(),
+		"tried_count": len(providerChain),
+	})
 
 }
 
-// validateCompletionRequest performs additional business logic validation
 func validateCompletionRequest(req *types.Completion) error {
 
 	if len(req.Messages) > 0 {

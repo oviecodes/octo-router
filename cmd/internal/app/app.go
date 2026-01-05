@@ -23,6 +23,7 @@ type ConfigResolver interface {
 	GetRetry(c *gin.Context) *resilience.Retry
 	GetCircuitBreaker(c *gin.Context) map[string]types.CircuitBreaker
 	GetProviderManager(c *gin.Context) *providers.ProviderManager
+	GetFallbackChain(c *gin.Context) []string
 }
 
 type App struct {
@@ -33,6 +34,7 @@ type App struct {
 	Retry           *resilience.Retry
 	Circuit         map[string]types.CircuitBreaker
 	ProviderManager *providers.ProviderManager
+	FallbackChain   []string
 }
 
 var logger = utils.SetUpLogger()
@@ -56,7 +58,7 @@ func SetUpApp() *App {
 	}
 
 	// Initialize router with provider manager
-	llmRouter, err := initializeRouter(cfg, providerManager)
+	llmRouter, fallback, err := initializeRouter(cfg, providerManager)
 	if err != nil {
 		logger.Error("Failed to initialize router", zap.Error(err))
 		os.Exit(1)
@@ -85,6 +87,7 @@ func SetUpApp() *App {
 		Retry:           retry,
 		Circuit:         circuit,
 		ProviderManager: providerManager,
+		FallbackChain:   fallback,
 	}
 
 	return app
@@ -114,14 +117,14 @@ func initializeProviderManager(cfg *config.Config) (*providers.ProviderManager, 
 	return manager, nil
 }
 
-func initializeRouter(cfg *config.Config, providerManager *providers.ProviderManager) (router.Router, error) {
+func initializeRouter(cfg *config.Config, providerManager *providers.ProviderManager) (router.Router, []string, error) {
 	routerStrategy := cfg.GetRouterStrategy()
 
 	logger.Info("Initializing router", zap.String("strategy", routerStrategy.Strategy))
 
-	llmRouter, err := router.ConfigureRouterStrategy(routerStrategy, providerManager)
+	llmRouter, fallback, err := router.ConfigureRouterStrategy(routerStrategy, providerManager)
 
-	return llmRouter, err
+	return llmRouter, fallback, err
 }
 
 func initializeCircuitBreakers(cfg *config.Config) map[string]types.CircuitBreaker {

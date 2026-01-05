@@ -43,3 +43,7 @@ func (s *SingleTenantResolver) GetCircuitBreaker(c *gin.Context) map[string]type
 func (s *SingleTenantResolver) GetProviderManager(c *gin.Context) *providers.ProviderManager {
 	return s.App.ProviderManager
 }
+
+func (s *SingleTenantResolver) GetFallbackChain(c *gin.Context) []string {
+	return s.App.FallbackChain
+}
