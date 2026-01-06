@@ -58,7 +58,9 @@ func TestRoundRobinSelection(t *testing.T) {
 	selectedProviders := make([]types.Provider, 6)
 
 	for i := range 6 {
-		selectedProviders[i], _ = router.SelectProvider(context.Background(), circuitBreakers)
+		selectedProviders[i], _ = router.SelectProvider(context.Background(), &types.SelectProviderInput{
+			Circuits: circuitBreakers,
+		})
 	}
 
 	// Should cycle through providers
@@ -98,7 +100,9 @@ func TestRoundRobinWithSingleProvider(t *testing.T) {
 
 	// Should always return the same provider
 	for i := range 5 {
-		selected, _ := router.SelectProvider(context.Background(), circuitBreakers)
+		selected, _ := router.SelectProvider(context.Background(), &types.SelectProviderInput{
+			Circuits: circuitBreakers,
+		})
 		if selected != mockProviders[0] {
 			t.Errorf("Expected solo provider, got different provider on iteration %d", i)
 		}

@@ -10,3 +10,8 @@ type RouterConfig struct {
 	Providers     []ProviderConfigWithExtras
 	FallbackChain []string
 }
+
+type SelectProviderInput struct {
+	Circuits map[string]CircuitBreaker
+	Messages []Message
+}

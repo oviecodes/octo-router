@@ -16,7 +16,7 @@ type RoundRobinRouter struct {
 	current         int
 }
 
-func (r *RoundRobinRouter) SelectProvider(ctx context.Context, circuits map[string]types.CircuitBreaker) (types.Provider, error) {
+func (r *RoundRobinRouter) SelectProvider(ctx context.Context, deps *types.SelectProviderInput) (types.Provider, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -26,7 +26,7 @@ func (r *RoundRobinRouter) SelectProvider(ctx context.Context, circuits map[stri
 		provider := providerList[r.current]
 		r.current = (r.current + 1) % len(providerList)
 
-		breaker, ok := circuits[provider.GetProviderName()]
+		breaker, ok := deps.Circuits[provider.GetProviderName()]
 
 		if !ok || !breaker.CanExecute() {
 			continue

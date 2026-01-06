@@ -12,7 +12,7 @@ type CostRouter struct {
 	mu              sync.Mutex
 }
 
-func (c *CostRouter) SelectProvider(ctx context.Context, circuits map[string]types.CircuitBreaker) (types.Provider, error) {
+func (c *CostRouter) SelectProvider(ctx context.Context, deps *types.SelectProviderInput) (types.Provider, error) {
 
 	allProviders := c.providerManager.GetProviders()
 

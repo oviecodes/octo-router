@@ -11,7 +11,7 @@ import (
 )
 
 type Router interface {
-	SelectProvider(ctx context.Context, circuits map[string]types.CircuitBreaker) (types.Provider, error)
+	SelectProvider(ctx context.Context, deps *types.SelectProviderInput) (types.Provider, error)
 	GetProviderManager() *providers.ProviderManager
 }
 

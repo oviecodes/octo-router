@@ -108,7 +108,11 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 	)
 
 	router := resolver.GetRouter()
-	provider, err := router.SelectProvider(ctx, circuitBreakers)
+
+	provider, err := router.SelectProvider(ctx, &types.SelectProviderInput{
+		Messages: request.Messages,
+		Circuits: circuitBreakers,
+	})
 
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
