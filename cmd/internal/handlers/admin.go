@@ -9,12 +9,12 @@ import (
 
 func AdminConfig(resolver app.ConfigResolver, c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"providers": resolver.GetConfig(c).Providers,
+		"providers": resolver.GetConfig().Providers,
 	})
 }
 
 func AdminProviders(resolver app.ConfigResolver, c *gin.Context) {
-	enabled := resolver.GetConfig(c).GetEnabledProviders()
+	enabled := resolver.GetConfig().GetEnabledProviders()
 
 	c.JSON(http.StatusOK, gin.H{
 		"enabled": enabled,

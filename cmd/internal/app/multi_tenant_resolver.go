@@ -8,7 +8,6 @@ import (
 	"llm-router/config"
 	"llm-router/types"
 
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
@@ -16,7 +15,7 @@ type MultiTenantResolver struct {
 	Logger *zap.Logger
 }
 
-func (m *MultiTenantResolver) GetConfig(c *gin.Context) *config.Config {
+func (m *MultiTenantResolver) GetConfig() *config.Config {
 	// Extract API key from request
 	// apiKey := c.GetHeader("X-API-Key")
 	// Fetch tenant config from DB/cache
@@ -29,7 +28,7 @@ func (m *MultiTenantResolver) GetConfig(c *gin.Context) *config.Config {
 // it might be some other function that checks
 // if a router is already cached for said user, then retrieve
 // if not fetch cfg from database and configure router properly
-func (m *MultiTenantResolver) GetRouter(c *gin.Context) router.Router {
+func (m *MultiTenantResolver) GetRouter() router.Router {
 	// cfg := m.GetConfig(c)
 	// providerManager, _ := initializeProviderManager(cfg)
 	// router, _ := initializeRouter(cfg, providerManager)
@@ -38,26 +37,26 @@ func (m *MultiTenantResolver) GetRouter(c *gin.Context) router.Router {
 	return nil
 }
 
-func (m *MultiTenantResolver) GetLogger(c *gin.Context) *zap.Logger {
+func (m *MultiTenantResolver) GetLogger() *zap.Logger {
 	return m.Logger
 }
 
-func (m *MultiTenantResolver) GetCache(c *gin.Context) cache.Cache {
+func (m *MultiTenantResolver) GetCache() cache.Cache {
 	return nil
 }
 
-func (m *MultiTenantResolver) GetRetry(c *gin.Context) *resilience.Retry {
+func (m *MultiTenantResolver) GetRetry() *resilience.Retry {
 	return nil
 }
 
-func (m *MultiTenantResolver) GetCircuitBreaker(c *gin.Context) map[string]types.CircuitBreaker {
+func (m *MultiTenantResolver) GetCircuitBreaker() map[string]types.CircuitBreaker {
 	return nil
 }
 
-func (m *MultiTenantResolver) GetProviderManager(c *gin.Context) *providers.ProviderManager {
+func (m *MultiTenantResolver) GetProviderManager() *providers.ProviderManager {
 	return nil
 }
 
-func (m *MultiTenantResolver) GetFallbackChain(c *gin.Context) []string {
+func (m *MultiTenantResolver) GetFallbackChain() []string {
 	return nil
 }

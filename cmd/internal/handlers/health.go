@@ -10,6 +10,6 @@ import (
 func Health(resolver app.ConfigResolver, c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":    "healthy",
-		"providers": len(resolver.GetConfig(nil).GetEnabledProviders()),
+		"providers": len(resolver.GetConfig().GetEnabledProviders()),
 	})
 }

@@ -45,14 +45,14 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 	c.Header("Connection", "keep-alive")
 	c.Header("Transfer-Encoding", "chunked")
 
-	circuitBreakers := resolver.GetCircuitBreaker(c)
+	circuitBreakers := resolver.GetCircuitBreaker()
 	providerName := provider.GetProviderName()
 	circuitBreaker := circuitBreakers[providerName]
 
 	chunks, err := provider.CompleteStream(c.Request.Context(), request.Messages)
 
 	if err != nil {
-		resolver.GetLogger(c).Error("Provider streaming failed", zap.Error(err))
+		resolver.GetLogger().Error("Provider streaming failed", zap.Error(err))
 		c.SSEvent("error", gin.H{
 			"error": "Failed to start streaming completion",
 		})
@@ -82,9 +82,12 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 }
 
 func Completions(resolver app.ConfigResolver, c *gin.Context) {
+	// Extract context.Context once at the HTTP boundary
+	ctx := c.Request.Context()
+
 	var request types.Completion
-	retry := resolver.GetRetry(c)
-	circuitBreakers := resolver.GetCircuitBreaker(c)
+	retry := resolver.GetRetry()
+	circuitBreakers := resolver.GetCircuitBreaker()
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		validations.HandleValidationError(c, err)
@@ -98,14 +101,14 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 		return
 	}
 
-	resolver.GetLogger(c).Info("Completion request received",
+	resolver.GetLogger().Info("Completion request received",
 		zap.Int("message_count", len(request.Messages)),
 		zap.String("model", request.Model),
 		zap.Bool("stream", request.Stream),
 	)
 
-	router := resolver.GetRouter(c)
-	provider, err := router.SelectProvider(c.Request.Context(), circuitBreakers)
+	router := resolver.GetRouter()
+	provider, err := router.SelectProvider(ctx, circuitBreakers)
 
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
@@ -114,9 +117,9 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 		return
 	}
 
-	providerChain := buildProviderChain(provider, resolver.GetFallbackChain(c), resolver.GetProviderManager(c))
+	providerChain := buildProviderChain(provider, resolver.GetFallbackChain(), resolver.GetProviderManager())
 
-	resolver.GetLogger(c).Info("Provider chain built",
+	resolver.GetLogger().Info("Provider chain built",
 		zap.Int("chain_length", len(providerChain)),
 		zap.String("primary_provider", provider.GetProviderName()),
 	)
@@ -132,21 +135,21 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 		currentProviderName := currentProvider.GetProviderName()
 		currentCircuitBreaker := circuitBreakers[currentProviderName]
 
-		resolver.GetLogger(c).Debug("Trying provider",
+		resolver.GetLogger().Debug("Trying provider",
 			zap.Int("attempt", i+1),
 			zap.Int("total", len(providerChain)),
 			zap.String("provider", currentProviderName),
 			zap.String("circuit_state", currentCircuitBreaker.GetState()),
 		)
 
-		response, err := resilience.Do(c, currentProviderName, retry, func(ctx context.Context) (*types.Message, error) {
-			return currentProvider.Complete(c.Request.Context(), request.Messages)
+		response, err := resilience.Do(ctx, currentProviderName, retry, func(ctx context.Context) (*types.Message, error) {
+			return currentProvider.Complete(ctx, request.Messages)
 		})
 
 		currentCircuitBreaker.Execute(err)
 
 		if err != nil {
-			resolver.GetLogger(c).Warn("Provider failed, trying next in chain",
+			resolver.GetLogger().Warn("Provider failed, trying next in chain",
 				zap.String("provider", currentProviderName),
 				zap.Error(err),
 				zap.Int("remaining_providers", len(providerChain)-i-1),
@@ -155,7 +158,7 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 			continue
 		}
 
-		resolver.GetLogger(c).Info("Provider succeeded",
+		resolver.GetLogger().Info("Provider succeeded",
 			zap.String("provider", currentProviderName),
 			zap.Int("attempt_number", i+1),
 		)
@@ -168,7 +171,7 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 		return
 	}
 
-	resolver.GetLogger(c).Error("All providers in fallback chain failed",
+	resolver.GetLogger().Error("All providers in fallback chain failed",
 		zap.Int("providers_tried", len(providerChain)),
 		zap.Error(lastErr),
 	)

@@ -8,7 +8,6 @@ import (
 	"llm-router/config"
 	"llm-router/types"
 
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
@@ -16,34 +15,34 @@ type SingleTenantResolver struct {
 	App *App
 }
 
-func (s *SingleTenantResolver) GetConfig(c *gin.Context) *config.Config {
+func (s *SingleTenantResolver) GetConfig() *config.Config {
 	return s.App.Config
 }
 
-func (s *SingleTenantResolver) GetRouter(c *gin.Context) router.Router {
+func (s *SingleTenantResolver) GetRouter() router.Router {
 	return s.App.Router
 }
 
-func (s *SingleTenantResolver) GetLogger(c *gin.Context) *zap.Logger {
+func (s *SingleTenantResolver) GetLogger() *zap.Logger {
 	return s.App.Logger
 }
 
-func (s *SingleTenantResolver) GetCache(c *gin.Context) cache.Cache {
+func (s *SingleTenantResolver) GetCache() cache.Cache {
 	return s.App.Cache
 }
 
-func (s *SingleTenantResolver) GetRetry(c *gin.Context) *resilience.Retry {
+func (s *SingleTenantResolver) GetRetry() *resilience.Retry {
 	return s.App.Retry
 }
 
-func (s *SingleTenantResolver) GetCircuitBreaker(c *gin.Context) map[string]types.CircuitBreaker {
+func (s *SingleTenantResolver) GetCircuitBreaker() map[string]types.CircuitBreaker {
 	return s.App.Circuit
 }
 
-func (s *SingleTenantResolver) GetProviderManager(c *gin.Context) *providers.ProviderManager {
+func (s *SingleTenantResolver) GetProviderManager() *providers.ProviderManager {
 	return s.App.ProviderManager
 }
 
-func (s *SingleTenantResolver) GetFallbackChain(c *gin.Context) []string {
+func (s *SingleTenantResolver) GetFallbackChain() []string {
 	return s.App.FallbackChain
 }

@@ -11,19 +11,18 @@ import (
 	"llm-router/utils"
 	"os"
 
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
 type ConfigResolver interface {
-	GetConfig(c *gin.Context) *config.Config
-	GetRouter(c *gin.Context) router.Router
-	GetLogger(c *gin.Context) *zap.Logger
-	GetCache(c *gin.Context) cache.Cache
-	GetRetry(c *gin.Context) *resilience.Retry
-	GetCircuitBreaker(c *gin.Context) map[string]types.CircuitBreaker
-	GetProviderManager(c *gin.Context) *providers.ProviderManager
-	GetFallbackChain(c *gin.Context) []string
+	GetConfig() *config.Config
+	GetRouter() router.Router
+	GetLogger() *zap.Logger
+	GetCache() cache.Cache
+	GetRetry() *resilience.Retry
+	GetCircuitBreaker() map[string]types.CircuitBreaker
+	GetProviderManager() *providers.ProviderManager
+	GetFallbackChain() []string
 }
 
 type App struct {
