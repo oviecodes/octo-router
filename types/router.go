@@ -15,3 +15,8 @@ type SelectProviderInput struct {
 	Circuits map[string]CircuitBreaker
 	Messages []Message
 }
+
+type SelectedProviderOutput struct {
+	Provider Provider
+	Model    string
+}

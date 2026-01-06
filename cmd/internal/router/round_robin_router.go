@@ -16,7 +16,7 @@ type RoundRobinRouter struct {
 	current         int
 }
 
-func (r *RoundRobinRouter) SelectProvider(ctx context.Context, deps *types.SelectProviderInput) (types.Provider, error) {
+func (r *RoundRobinRouter) SelectProvider(ctx context.Context, deps *types.SelectProviderInput) (*types.SelectedProviderOutput, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -32,7 +32,9 @@ func (r *RoundRobinRouter) SelectProvider(ctx context.Context, deps *types.Selec
 			continue
 		}
 
-		return provider, nil
+		return &types.SelectedProviderOutput{
+			Provider: provider,
+		}, nil
 	}
 
 	return nil, fmt.Errorf("no available providers")

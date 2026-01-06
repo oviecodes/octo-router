@@ -55,25 +55,27 @@ func TestRoundRobinSelection(t *testing.T) {
 	}
 
 	// Test round-robin distribution
-	selectedProviders := make([]types.Provider, 6)
+	selectedProviders := make([]types.SelectedProviderOutput, 6)
 
 	for i := range 6 {
-		selectedProviders[i], _ = router.SelectProvider(context.Background(), &types.SelectProviderInput{
+		providerOutput, _ := router.SelectProvider(context.Background(), &types.SelectProviderInput{
 			Circuits: circuitBreakers,
 		})
+
+		selectedProviders[i] = *providerOutput
 	}
 
 	// Should cycle through providers
-	if selectedProviders[0] != allProviders[0] {
+	if selectedProviders[0].Provider != allProviders[0] {
 		t.Error("First selection should be provider 0")
 	}
-	if selectedProviders[1] != allProviders[1] {
+	if selectedProviders[1].Provider != allProviders[1] {
 		t.Error("Second selection should be provider 1")
 	}
-	if selectedProviders[2] != allProviders[2] {
+	if selectedProviders[2].Provider != allProviders[2] {
 		t.Error("Third selection should be provider 2")
 	}
-	if selectedProviders[3] != allProviders[0] {
+	if selectedProviders[3].Provider != allProviders[0] {
 		t.Error("Fourth selection should wrap to provider 0")
 	}
 }
@@ -103,7 +105,7 @@ func TestRoundRobinWithSingleProvider(t *testing.T) {
 		selected, _ := router.SelectProvider(context.Background(), &types.SelectProviderInput{
 			Circuits: circuitBreakers,
 		})
-		if selected != mockProviders[0] {
+		if selected.Provider != mockProviders[0] {
 			t.Errorf("Expected solo provider, got different provider on iteration %d", i)
 		}
 	}
