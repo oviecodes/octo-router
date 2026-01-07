@@ -106,17 +106,14 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 		return
 	}
 
-	// how similar are these functions
-	// how do I ensure that once more routing strategies are added, it's elaborate enough
 	if model != "" {
-		handleCostBasedCompletion(ctx, resolver, c, provider, model, circuitBreakers, retry, request)
-		return
+		handleCompletionWithModelChain(ctx, resolver, c, provider, model, circuitBreakers, retry, request)
+	} else {
+		handleCompletionWithProviderChain(ctx, resolver, c, provider, circuitBreakers, retry, request)
 	}
-
-	handleRoundRobinCompletion(ctx, resolver, c, provider, circuitBreakers, retry, request)
 }
 
-func handleCostBasedCompletion(
+func handleCompletionWithModelChain(
 	ctx context.Context,
 	resolver app.ConfigResolver,
 	c *gin.Context,
@@ -126,7 +123,6 @@ func handleCostBasedCompletion(
 	retry *resilience.Retry,
 	request types.Completion,
 ) {
-
 	providerChain := buildProviderChainWithModels(
 		primaryModel,
 		primaryProvider,
@@ -135,7 +131,7 @@ func handleCostBasedCompletion(
 		resolver.GetLogger(),
 	)
 
-	resolver.GetLogger().Info("Cost-based provider chain built",
+	resolver.GetLogger().Info("Model-aware provider chain built",
 		zap.Int("chain_length", len(providerChain)),
 		zap.String("primary_provider", primaryProvider.GetProviderName()),
 		zap.String("primary_model", primaryModel),
@@ -158,7 +154,10 @@ func handleCostBasedCompletion(
 		)
 
 		response, err := resilience.Do(ctx, currentProviderName, retry, func(ctx context.Context) (*types.Message, error) {
-			return currentProvider.Complete(ctx, request.Messages)
+			return currentProvider.Complete(ctx, &types.CompletionInput{
+				Model:    currentModel,
+				Messages: request.Messages,
+			})
 		})
 
 		currentCircuitBreaker.Execute(err)
@@ -201,7 +200,7 @@ func handleCostBasedCompletion(
 	})
 }
 
-func handleRoundRobinCompletion(
+func handleCompletionWithProviderChain(
 	ctx context.Context,
 	resolver app.ConfigResolver,
 	c *gin.Context,
@@ -213,7 +212,7 @@ func handleRoundRobinCompletion(
 
 	providerChain := buildProviderChain(primaryProvider, resolver.GetFallbackChain(), resolver.GetProviderManager())
 
-	resolver.GetLogger().Info("Round-robin provider chain built",
+	resolver.GetLogger().Info("Provider-only chain built",
 		zap.Int("chain_length", len(providerChain)),
 		zap.String("primary_provider", primaryProvider.GetProviderName()),
 	)
@@ -232,7 +231,10 @@ func handleRoundRobinCompletion(
 		)
 
 		response, err := resilience.Do(ctx, currentProviderName, retry, func(ctx context.Context) (*types.Message, error) {
-			return currentProvider.Complete(ctx, request.Messages)
+			return currentProvider.Complete(ctx, &types.CompletionInput{
+				Model:    "",
+				Messages: request.Messages,
+			})
 		})
 
 		currentCircuitBreaker.Execute(err)

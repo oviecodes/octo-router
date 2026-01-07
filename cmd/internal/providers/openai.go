@@ -30,18 +30,29 @@ type OpenAIProvider struct {
 	timeout         time.Duration
 }
 
-func (o *OpenAIProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
+func (o *OpenAIProvider) Complete(ctx context.Context, input *types.CompletionInput) (*types.Message, error) {
 	start := time.Now()
 	providerName := o.GetProviderName()
 
 	ctx, cancel := context.WithTimeout(ctx, o.timeout)
 	defer cancel()
 
-	openAIMessages := o.convertMessages(messages)
+	modelToUse := o.model
+	standardModelID := o.standardModelID
+	if input.Model != "" {
+		sdkModel, err := MapToOpenAIModel(input.Model)
+		if err != nil {
+			return nil, fmt.Errorf("invalid openai model: %w", err)
+		}
+		modelToUse = sdkModel
+		standardModelID = input.Model
+	}
+
+	openAIMessages := o.convertMessages(input.Messages)
 
 	chatCompletion, err := o.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Messages:            openAIMessages,
-		Model:               o.model,
+		Model:               openai.ChatModel(modelToUse),
 		MaxCompletionTokens: openai.Opt(o.maxTokens),
 	})
 
@@ -50,7 +61,6 @@ func (o *OpenAIProvider) Complete(ctx context.Context, messages []types.Message)
 
 	if err != nil {
 		status = "error"
-		// Translate to domain error
 		translatedErr := providererrors.TranslateOpenAIError(err)
 
 		var providerErr *providererrors.ProviderError
@@ -71,26 +81,24 @@ func (o *OpenAIProvider) Complete(ctx context.Context, messages []types.Message)
 	metrics.ProviderRequestsTotal.WithLabelValues(providerName, status).Inc()
 	metrics.ProviderRequestDuration.WithLabelValues(providerName).Observe(duration)
 
-	// Track token usage
 	inputTokens := int(chatCompletion.Usage.PromptTokens)
 	outputTokens := int(chatCompletion.Usage.CompletionTokens)
 
 	metrics.ProviderTokensUsed.WithLabelValues(providerName, "input").Add(float64(inputTokens))
 	metrics.ProviderTokensUsed.WithLabelValues(providerName, "output").Add(float64(outputTokens))
 
-	// Calculate and track cost
-	cost, err := CalculateCost(o.standardModelID, inputTokens, outputTokens)
+	cost, err := CalculateCost(standardModelID, inputTokens, outputTokens)
 	if err != nil {
 		logger.Warn("Failed to calculate cost",
 			zap.String("provider", providerName),
-			zap.String("model", o.standardModelID),
+			zap.String("model", standardModelID),
 			zap.Error(err),
 		)
 	} else {
 		metrics.ProviderCostTotal.WithLabelValues(providerName).Add(cost)
 		logger.Debug("Request cost calculated",
 			zap.String("provider", providerName),
-			zap.String("model", o.standardModelID),
+			zap.String("model", standardModelID),
 			zap.Int("input_tokens", inputTokens),
 			zap.Int("output_tokens", outputTokens),
 			zap.Float64("cost_usd", cost),
@@ -101,22 +109,26 @@ func (o *OpenAIProvider) Complete(ctx context.Context, messages []types.Message)
 	return &response, nil
 }
 
-func (o *OpenAIProvider) CompleteStream(ctx context.Context, data *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {
+func (o *OpenAIProvider) CompleteStream(ctx context.Context, input *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {
 	ctx, cancel := context.WithTimeout(ctx, o.timeout)
 	defer cancel()
 
-	messages := data.Messages
-	model := data.Model
-
-	if data.Model == "" {
-		model = o.model
+	modelToUse := o.model
+	// standardModelID := o.standardModelID
+	if input.Model != "" {
+		sdkModel, err := MapToOpenAIModel(input.Model)
+		if err != nil {
+			return nil, fmt.Errorf("invalid openai model: %w", err)
+		}
+		modelToUse = sdkModel
+		// standardModelID = input.Model
 	}
 
-	openAIMessages := o.convertMessages(messages)
+	openAIMessages := o.convertMessages(input.Messages)
 
 	stream := o.client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
 		Messages:            openAIMessages,
-		Model:               model,
+		Model:               modelToUse,
 		MaxCompletionTokens: openai.Opt(o.maxTokens),
 	})
 
@@ -214,7 +226,7 @@ func (o *OpenAIProvider) convertToRouterMessage(openAIMessage *openai.ChatComple
 }
 
 func (o *OpenAIProvider) CountTokens(ctx context.Context, messages []types.Message) (int, error) {
-	// Use tiktoken to estimate tokens locally (fast, no API calls, no rate limits)
+
 	encoding, err := tiktoken.GetEncoding("cl100k_base")
 	if err != nil {
 		return 0, fmt.Errorf("failed to get tiktoken encoding: %w", err)
@@ -222,7 +234,7 @@ func (o *OpenAIProvider) CountTokens(ctx context.Context, messages []types.Messa
 
 	totalTokens := 0
 	for _, msg := range messages {
-		// Count tokens in content
+
 		tokens := encoding.Encode(msg.Content, nil, nil)
 		totalTokens += len(tokens)
 
@@ -257,7 +269,7 @@ func NewOpenAIProvider(config OpenAIConfig) (*OpenAIProvider, error) {
 	return &OpenAIProvider{
 		client:          client,
 		model:           model,
-		standardModelID: config.Model, // Store standardized model ID for cost calculation
+		standardModelID: config.Model,
 		maxTokens:       int64(config.MaxTokens),
 		timeout:         timeout,
 	}, nil

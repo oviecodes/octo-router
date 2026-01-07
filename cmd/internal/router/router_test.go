@@ -12,7 +12,7 @@ type mockProvider struct {
 	name string
 }
 
-func (m *mockProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
+func (m *mockProvider) Complete(ctx context.Context, input *types.CompletionInput) (*types.Message, error) {
 	return &types.Message{
 		Role:    "assistant",
 		Content: "test response",

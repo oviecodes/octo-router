@@ -24,23 +24,35 @@ type GeminiConfig struct {
 type GeminiProvider struct {
 	client          *genai.Client
 	maxTokens       int64
-	model           string // SDK model string
-	standardModelID string // Standardized model ID for cost calculation
+	model           string
+	standardModelID string
 	timeout         time.Duration
 }
 
-func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
+func (g *GeminiProvider) Complete(ctx context.Context, input *types.CompletionInput) (*types.Message, error) {
 	start := time.Now()
 	providerName := g.GetProviderName()
 
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
 	defer cancel()
-	//convert to geminiMessageformat
-	geminiMessages, currentMessage := g.convertMessages(messages)
+
+	modelToUse := g.model
+	standardModelID := g.standardModelID
+	if input.Model != "" {
+
+		sdkModel, err := MapToGeminiModel(input.Model)
+		if err != nil {
+			return nil, fmt.Errorf("invalid gemini model: %w", err)
+		}
+		modelToUse = sdkModel
+		standardModelID = input.Model
+	}
+
+	geminiMessages, currentMessage := g.convertMessages(input.Messages)
 
 	chat, err := g.client.Chats.Create(
 		ctx,
-		g.model,
+		modelToUse,
 		nil,
 		geminiMessages,
 	)
@@ -92,7 +104,6 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 
 	var response *types.Message
 
-	// convert to octo-router message type
 	if len(res.Candidates) == 0 {
 		return nil, fmt.Errorf("no response candidates from Gemini")
 	}
@@ -100,7 +111,6 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 	metrics.ProviderRequestsTotal.WithLabelValues(providerName, status).Inc()
 	metrics.ProviderRequestDuration.WithLabelValues(providerName).Observe(duration)
 
-	// Track token usage if available
 	if res.UsageMetadata != nil {
 		inputTokens := int(res.UsageMetadata.PromptTokenCount)
 		outputTokens := int(res.UsageMetadata.CandidatesTokenCount)
@@ -108,19 +118,18 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 		metrics.ProviderTokensUsed.WithLabelValues(providerName, "input").Add(float64(inputTokens))
 		metrics.ProviderTokensUsed.WithLabelValues(providerName, "output").Add(float64(outputTokens))
 
-		// Calculate and track cost
-		cost, err := CalculateCost(g.standardModelID, inputTokens, outputTokens)
+		cost, err := CalculateCost(standardModelID, inputTokens, outputTokens)
 		if err != nil {
 			logger.Warn("Failed to calculate cost",
 				zap.String("provider", providerName),
-				zap.String("model", g.standardModelID),
+				zap.String("model", standardModelID),
 				zap.Error(err),
 			)
 		} else {
 			metrics.ProviderCostTotal.WithLabelValues(providerName).Add(cost)
 			logger.Debug("Request cost calculated",
 				zap.String("provider", providerName),
-				zap.String("model", g.standardModelID),
+				zap.String("model", standardModelID),
 				zap.Int("input_tokens", inputTokens),
 				zap.Int("output_tokens", outputTokens),
 				zap.Float64("cost_usd", cost),
@@ -132,22 +141,25 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 	return response, nil
 }
 
-func (g *GeminiProvider) CompleteStream(ctx context.Context, data *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {
+func (g *GeminiProvider) CompleteStream(ctx context.Context, input *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
 	defer cancel()
 
-	messages := data.Messages
-	model := data.Model
+	modelToUse := g.model
+	if input.Model != "" {
 
-	if data.Model == "" {
-		model = g.model
+		sdkModel, err := MapToGeminiModel(input.Model)
+		if err != nil {
+			return nil, fmt.Errorf("invalid gemini model: %w", err)
+		}
+		modelToUse = sdkModel
 	}
 
-	geminiMessages, currentMessage := g.convertMessages(messages)
+	geminiMessages, currentMessage := g.convertMessages(input.Messages)
 
 	chat, err := g.client.Chats.Create(
 		ctx,
-		model,
+		modelToUse,
 		nil,
 		geminiMessages,
 	)
@@ -230,7 +242,6 @@ func (g *GeminiProvider) convertToRouterMessage(text string) *types.Message {
 }
 
 func (g *GeminiProvider) CountTokens(ctx context.Context, messages []types.Message) (int, error) {
-	// Use tiktoken to estimate tokens locally (fast, no API calls, no rate limits)
 	encoding, err := tiktoken.GetEncoding("cl100k_base")
 	if err != nil {
 		return 0, fmt.Errorf("failed to get tiktoken encoding: %w", err)
@@ -238,7 +249,6 @@ func (g *GeminiProvider) CountTokens(ctx context.Context, messages []types.Messa
 
 	totalTokens := 0
 	for _, msg := range messages {
-		// Count tokens in content
 		tokens := encoding.Encode(msg.Content, nil, nil)
 		totalTokens += len(tokens)
 
@@ -265,7 +275,6 @@ func NewGeminiProvider(config GeminiConfig) (*GeminiProvider, error) {
 		return nil, err
 	}
 
-	// Map standardized model ID to Gemini API model string
 	model, err := MapToGeminiModel(config.Model)
 	if err != nil {
 		return nil, fmt.Errorf("invalid Gemini model: %w", err)
@@ -280,7 +289,7 @@ func NewGeminiProvider(config GeminiConfig) (*GeminiProvider, error) {
 		client:          client,
 		maxTokens:       config.MaxTokens,
 		model:           model,
-		standardModelID: config.Model, // Store standardized model ID for cost calculation
+		standardModelID: config.Model,
 		timeout:         timeout,
 	}, nil
 }

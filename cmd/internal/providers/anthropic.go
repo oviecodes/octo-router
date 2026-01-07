@@ -33,20 +33,30 @@ type AnthropicProvider struct {
 	timeout         time.Duration
 }
 
-func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Message) (*types.Message, error) {
+func (a *AnthropicProvider) Complete(ctx context.Context, input *types.CompletionInput) (*types.Message, error) {
 	start := time.Now()
 	providerName := a.GetProviderName()
 
 	ctx, cancel := context.WithTimeout(ctx, a.timeout)
 	defer cancel()
 
-	// Send all messages in the conversation
-	anthropicMessages := a.convertMessages(messages)
+	modelToUse := a.model
+	standardModelID := a.standardModelID
+	if input.Model != "" {
+		sdkModel, err := MapToAnthropicModel(input.Model)
+		if err != nil {
+			return nil, fmt.Errorf("invalid anthropic model: %w", err)
+		}
+		modelToUse = sdkModel
+		standardModelID = input.Model
+	}
+
+	anthropicMessages := a.convertMessages(input.Messages)
 
 	message, err := a.client.Messages.New(ctx, anthropic.MessageNewParams{
 		MaxTokens: a.maxTokens,
 		Messages:  anthropicMessages,
-		Model:     a.model,
+		Model:     modelToUse,
 	})
 
 	duration := time.Since(start).Seconds()
@@ -54,10 +64,8 @@ func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Messa
 
 	if err != nil {
 		status = "error"
-		// Translate to domain error
 		translatedErr := providererrors.TranslateAnthropicError(err)
 
-		// Log with provider error details
 		var providerErr *providererrors.ProviderError
 		if errors.As(translatedErr, &providerErr) {
 			logger.Error("Anthropic request failed",
@@ -77,26 +85,24 @@ func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Messa
 	metrics.ProviderRequestsTotal.WithLabelValues(providerName, status).Inc()
 	metrics.ProviderRequestDuration.WithLabelValues(providerName).Observe(duration)
 
-	// Track token usage
 	inputTokens := int(message.Usage.InputTokens)
 	outputTokens := int(message.Usage.OutputTokens)
 
 	metrics.ProviderTokensUsed.WithLabelValues(providerName, "input").Add(float64(inputTokens))
 	metrics.ProviderTokensUsed.WithLabelValues(providerName, "output").Add(float64(outputTokens))
 
-	// Calculate and track cost
-	cost, err := CalculateCost(a.standardModelID, inputTokens, outputTokens)
+	cost, err := CalculateCost(standardModelID, inputTokens, outputTokens)
 	if err != nil {
 		logger.Warn("Failed to calculate cost",
 			zap.String("provider", providerName),
-			zap.String("model", a.standardModelID),
+			zap.String("model", standardModelID),
 			zap.Error(err),
 		)
 	} else {
 		metrics.ProviderCostTotal.WithLabelValues(providerName).Add(cost)
 		logger.Debug("Request cost calculated",
 			zap.String("provider", providerName),
-			zap.String("model", a.standardModelID),
+			zap.String("model", standardModelID),
 			zap.Int("input_tokens", inputTokens),
 			zap.Int("output_tokens", outputTokens),
 			zap.Float64("cost_usd", cost),
@@ -107,23 +113,27 @@ func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Messa
 	return response, nil
 }
 
-func (a *AnthropicProvider) CompleteStream(ctx context.Context, data *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {
+func (a *AnthropicProvider) CompleteStream(ctx context.Context, input *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {
 	ctx, cancel := context.WithTimeout(ctx, a.timeout)
 	defer cancel()
 
-	messages := data.Messages
-	model := data.Model
-
-	if data.Model == "" {
-		model = string(a.model)
+	modelToUse := a.model
+	// standardModelID := a.standardModelID
+	if input.Model != "" {
+		sdkModel, err := MapToAnthropicModel(input.Model)
+		if err != nil {
+			return nil, fmt.Errorf("invalid anthropic model: %w", err)
+		}
+		modelToUse = sdkModel
+		// standardModelID = input.Model
 	}
 
-	anthropicMessages := a.convertMessages(messages)
+	anthropicMessages := a.convertMessages(input.Messages)
 
 	stream := a.client.Messages.NewStreaming(ctx, anthropic.MessageNewParams{
 		MaxTokens: a.maxTokens,
 		Messages:  anthropicMessages,
-		Model:     anthropic.Model(model),
+		Model:     modelToUse,
 	})
 
 	chunks := make(chan *types.StreamChunk)
@@ -219,7 +229,6 @@ func (a *AnthropicProvider) convertToRouterMessage(message *anthropic.Message) *
 }
 
 func (a *AnthropicProvider) CountTokens(ctx context.Context, messages []types.Message) (int, error) {
-	// Use tiktoken to estimate tokens locally (fast, no API calls, no rate limits)
 	encoding, err := tiktoken.GetEncoding("cl100k_base")
 	if err != nil {
 		return 0, fmt.Errorf("failed to get tiktoken encoding: %w", err)
@@ -227,7 +236,6 @@ func (a *AnthropicProvider) CountTokens(ctx context.Context, messages []types.Me
 
 	totalTokens := 0
 	for _, msg := range messages {
-		// Count tokens in content
 		tokens := encoding.Encode(msg.Content, nil, nil)
 		totalTokens += len(tokens)
 

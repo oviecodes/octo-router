@@ -5,10 +5,15 @@ import (
 )
 
 type Provider interface {
-	Complete(ctx context.Context, messages []Message) (*Message, error)
+	Complete(ctx context.Context, input *CompletionInput) (*Message, error)
 	CountTokens(ctx context.Context, messages []Message) (int, error)
 	CompleteStream(ctx context.Context, data *StreamCompletionInput) (<-chan *StreamChunk, error)
 	GetProviderName() string
+}
+
+type CompletionInput struct {
+	Model    string
+	Messages []Message
 }
 
 type ProviderConfig struct {
