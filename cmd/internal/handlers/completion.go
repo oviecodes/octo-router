@@ -13,7 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, provider types.Provider, request types.Completion) {
+func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, provider types.Provider, model string, request types.Completion) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
@@ -23,7 +23,10 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 	providerName := provider.GetProviderName()
 	circuitBreaker := circuitBreakers[providerName]
 
-	chunks, err := provider.CompleteStream(c.Request.Context(), request.Messages)
+	chunks, err := provider.CompleteStream(c.Request.Context(), &types.StreamCompletionInput{
+		Model:    model,
+		Messages: request.Messages,
+	})
 
 	if err != nil {
 		resolver.GetLogger().Error("Provider streaming failed", zap.Error(err))
@@ -99,10 +102,12 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 	}
 
 	if request.Stream {
-		HandleStreamingCompletion(resolver, c, provider, request)
+		HandleStreamingCompletion(resolver, c, provider, model, request)
 		return
 	}
 
+	// how similar are these functions
+	// how do I ensure that once more routing strategies are added, it's elaborate enough
 	if model != "" {
 		handleCostBasedCompletion(ctx, resolver, c, provider, model, circuitBreakers, retry, request)
 		return

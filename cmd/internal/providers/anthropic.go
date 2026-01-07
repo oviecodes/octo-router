@@ -107,16 +107,23 @@ func (a *AnthropicProvider) Complete(ctx context.Context, messages []types.Messa
 	return response, nil
 }
 
-func (a *AnthropicProvider) CompleteStream(ctx context.Context, messages []types.Message) (<-chan *types.StreamChunk, error) {
+func (a *AnthropicProvider) CompleteStream(ctx context.Context, data *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {
 	ctx, cancel := context.WithTimeout(ctx, a.timeout)
 	defer cancel()
+
+	messages := data.Messages
+	model := data.Model
+
+	if data.Model == "" {
+		model = string(a.model)
+	}
 
 	anthropicMessages := a.convertMessages(messages)
 
 	stream := a.client.Messages.NewStreaming(ctx, anthropic.MessageNewParams{
 		MaxTokens: a.maxTokens,
 		Messages:  anthropicMessages,
-		Model:     a.model,
+		Model:     anthropic.Model(model),
 	})
 
 	chunks := make(chan *types.StreamChunk)

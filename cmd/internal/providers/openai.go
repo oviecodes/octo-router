@@ -101,15 +101,22 @@ func (o *OpenAIProvider) Complete(ctx context.Context, messages []types.Message)
 	return &response, nil
 }
 
-func (o *OpenAIProvider) CompleteStream(ctx context.Context, messages []types.Message) (<-chan *types.StreamChunk, error) {
+func (o *OpenAIProvider) CompleteStream(ctx context.Context, data *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {
 	ctx, cancel := context.WithTimeout(ctx, o.timeout)
 	defer cancel()
+
+	messages := data.Messages
+	model := data.Model
+
+	if data.Model == "" {
+		model = o.model
+	}
 
 	openAIMessages := o.convertMessages(messages)
 
 	stream := o.client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
 		Messages:            openAIMessages,
-		Model:               o.model,
+		Model:               model,
 		MaxCompletionTokens: openai.Opt(o.maxTokens),
 	})
 

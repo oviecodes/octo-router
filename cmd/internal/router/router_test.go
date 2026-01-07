@@ -19,7 +19,7 @@ func (m *mockProvider) Complete(ctx context.Context, messages []types.Message) (
 	}, nil
 }
 
-func (m *mockProvider) CompleteStream(ctx context.Context, messages []types.Message) (<-chan *types.StreamChunk, error) {
+func (m *mockProvider) CompleteStream(ctx context.Context, data *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {
 	return nil, nil
 }
 

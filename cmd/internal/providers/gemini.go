@@ -132,15 +132,22 @@ func (g *GeminiProvider) Complete(ctx context.Context, messages []types.Message)
 	return response, nil
 }
 
-func (g *GeminiProvider) CompleteStream(ctx context.Context, messages []types.Message) (<-chan *types.StreamChunk, error) {
+func (g *GeminiProvider) CompleteStream(ctx context.Context, data *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
 	defer cancel()
+
+	messages := data.Messages
+	model := data.Model
+
+	if data.Model == "" {
+		model = g.model
+	}
 
 	geminiMessages, currentMessage := g.convertMessages(messages)
 
 	chat, err := g.client.Chats.Create(
 		ctx,
-		g.model,
+		model,
 		nil,
 		geminiMessages,
 	)
