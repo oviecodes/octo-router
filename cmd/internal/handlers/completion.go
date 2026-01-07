@@ -39,6 +39,126 @@ func buildProviderChain(primaryProvider types.Provider, fallbackNames []string, 
 	return providerChain
 }
 
+func buildProviderChainWithModels(
+	primaryModel string,
+	primaryProvider types.Provider,
+	fallbackNames []string,
+	manager *providers.ProviderManager,
+	logger *zap.Logger,
+) []types.ProviderWithModel {
+	chain := make([]types.ProviderWithModel, 0, len(fallbackNames)+1)
+	seen := make(map[string]bool)
+
+	primaryModelInfo, err := providers.GetModelInfo(primaryModel)
+	if err != nil {
+		logger.Warn("Failed to get primary model info, building simple chain",
+			zap.String("model", primaryModel),
+			zap.Error(err),
+		)
+
+		return buildSimpleChainWithModels(primaryModel, primaryProvider, fallbackNames, manager)
+	}
+
+	primaryTier := primaryModelInfo.Tier
+
+	primaryName := primaryProvider.GetProviderName()
+	chain = append(chain, types.ProviderWithModel{
+		Provider: primaryProvider,
+		Model:    primaryModel,
+	})
+	seen[primaryName] = true
+
+	logger.Debug("Building tier-aware fallback chain",
+		zap.String("primary_tier", string(primaryTier)),
+		zap.String("primary_model", primaryModel),
+	)
+
+	for _, fallbackName := range fallbackNames {
+		if seen[fallbackName] {
+			continue
+		}
+
+		fallbackProvider, err := manager.GetProvider(fallbackName)
+		if err != nil {
+			continue
+		}
+
+		models := providers.ListModelsByProviderAndTier(fallbackName, primaryTier)
+		if len(models) == 0 {
+			logger.Debug("No models in tier for provider, skipping",
+				zap.String("provider", fallbackName),
+				zap.String("tier", string(primaryTier)),
+			)
+			continue
+		}
+
+		cheapestModel, err := providers.FindCheapestModel(models)
+		if err != nil {
+			continue
+		}
+
+		logger.Debug("Adding fallback provider",
+			zap.String("provider", fallbackName),
+			zap.String("model", cheapestModel.ID),
+			zap.String("tier", string(cheapestModel.Tier)),
+		)
+
+		chain = append(chain, types.ProviderWithModel{
+			Provider: fallbackProvider,
+			Model:    cheapestModel.ID,
+		})
+		seen[fallbackName] = true
+	}
+
+	return chain
+}
+
+func buildSimpleChainWithModels(
+	primaryModel string,
+	primaryProvider types.Provider,
+	fallbackNames []string,
+	manager *providers.ProviderManager,
+) []types.ProviderWithModel {
+	chain := make([]types.ProviderWithModel, 0, len(fallbackNames)+1)
+	seen := make(map[string]bool)
+
+	primaryName := primaryProvider.GetProviderName()
+	chain = append(chain, types.ProviderWithModel{
+		Provider: primaryProvider,
+		Model:    primaryModel,
+	})
+	seen[primaryName] = true
+
+	for _, fallbackName := range fallbackNames {
+		if seen[fallbackName] {
+			continue
+		}
+
+		fallbackProvider, err := manager.GetProvider(fallbackName)
+		if err != nil {
+			continue
+		}
+
+		models := providers.ListModelsByProvider(fallbackName)
+		if len(models) == 0 {
+			continue
+		}
+
+		cheapestModel, err := providers.FindCheapestModel(models)
+		if err != nil {
+			continue
+		}
+
+		chain = append(chain, types.ProviderWithModel{
+			Provider: fallbackProvider,
+			Model:    cheapestModel.ID,
+		})
+		seen[fallbackName] = true
+	}
+
+	return chain
+}
+
 func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, provider types.Provider, request types.Completion) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
@@ -59,7 +179,6 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 		return
 	}
 
-	// Stream chunks to client
 	for chunk := range chunks {
 
 		circuitBreaker.Execute(chunk.Error)
@@ -82,7 +201,7 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 }
 
 func Completions(resolver app.ConfigResolver, c *gin.Context) {
-	// Extract context.Context once at the HTTP boundary
+
 	ctx := c.Request.Context()
 
 	var request types.Completion
@@ -112,10 +231,11 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 	providerStruct, err := router.SelectProvider(ctx, &types.SelectProviderInput{
 		Messages: request.Messages,
 		Circuits: circuitBreakers,
+		Tier:     request.Tier,
 	})
 
 	provider := providerStruct.Provider
-	// model := providerStruct.Model
+	model := providerStruct.Model
 
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
@@ -124,17 +244,120 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 		return
 	}
 
-	providerChain := buildProviderChain(provider, resolver.GetFallbackChain(), resolver.GetProviderManager())
-
-	resolver.GetLogger().Info("Provider chain built",
-		zap.Int("chain_length", len(providerChain)),
-		zap.String("primary_provider", provider.GetProviderName()),
-	)
-
 	if request.Stream {
 		HandleStreamingCompletion(resolver, c, provider, request)
 		return
 	}
+
+	if model != "" {
+		handleCostBasedCompletion(ctx, resolver, c, provider, model, circuitBreakers, retry, request)
+		return
+	}
+
+	handleRoundRobinCompletion(ctx, resolver, c, provider, circuitBreakers, retry, request)
+}
+
+func handleCostBasedCompletion(
+	ctx context.Context,
+	resolver app.ConfigResolver,
+	c *gin.Context,
+	primaryProvider types.Provider,
+	primaryModel string,
+	circuitBreakers map[string]types.CircuitBreaker,
+	retry *resilience.Retry,
+	request types.Completion,
+) {
+
+	providerChain := buildProviderChainWithModels(
+		primaryModel,
+		primaryProvider,
+		resolver.GetFallbackChain(),
+		resolver.GetProviderManager(),
+		resolver.GetLogger(),
+	)
+
+	resolver.GetLogger().Info("Cost-based provider chain built",
+		zap.Int("chain_length", len(providerChain)),
+		zap.String("primary_provider", primaryProvider.GetProviderName()),
+		zap.String("primary_model", primaryModel),
+	)
+
+	var lastErr error
+
+	for i, providerWithModel := range providerChain {
+		currentProvider := providerWithModel.Provider
+		currentModel := providerWithModel.Model
+		currentProviderName := currentProvider.GetProviderName()
+		currentCircuitBreaker := circuitBreakers[currentProviderName]
+
+		resolver.GetLogger().Debug("Trying provider with model",
+			zap.Int("attempt", i+1),
+			zap.Int("total", len(providerChain)),
+			zap.String("provider", currentProviderName),
+			zap.String("model", currentModel),
+			zap.String("circuit_state", currentCircuitBreaker.GetState()),
+		)
+
+		response, err := resilience.Do(ctx, currentProviderName, retry, func(ctx context.Context) (*types.Message, error) {
+			return currentProvider.Complete(ctx, request.Messages)
+		})
+
+		currentCircuitBreaker.Execute(err)
+
+		if err != nil {
+			resolver.GetLogger().Warn("Provider failed, trying next in chain",
+				zap.String("provider", currentProviderName),
+				zap.String("model", currentModel),
+				zap.Error(err),
+				zap.Int("remaining_providers", len(providerChain)-i-1),
+			)
+			lastErr = err
+			continue
+		}
+
+		resolver.GetLogger().Info("Provider succeeded",
+			zap.String("provider", currentProviderName),
+			zap.String("model", currentModel),
+			zap.Int("attempt_number", i+1),
+		)
+
+		c.JSON(http.StatusOK, gin.H{
+			"message":  response.Content,
+			"role":     response.Role,
+			"provider": currentProviderName,
+			"model":    currentModel,
+		})
+		return
+	}
+
+	resolver.GetLogger().Error("All providers in fallback chain failed",
+		zap.Int("providers_tried", len(providerChain)),
+		zap.Error(lastErr),
+	)
+
+	c.JSON(http.StatusInternalServerError, gin.H{
+		"error":       "All providers in fallback chain failed",
+		"last_error":  lastErr.Error(),
+		"tried_count": len(providerChain),
+	})
+}
+
+func handleRoundRobinCompletion(
+	ctx context.Context,
+	resolver app.ConfigResolver,
+	c *gin.Context,
+	primaryProvider types.Provider,
+	circuitBreakers map[string]types.CircuitBreaker,
+	retry *resilience.Retry,
+	request types.Completion,
+) {
+
+	providerChain := buildProviderChain(primaryProvider, resolver.GetFallbackChain(), resolver.GetProviderManager())
+
+	resolver.GetLogger().Info("Round-robin provider chain built",
+		zap.Int("chain_length", len(providerChain)),
+		zap.String("primary_provider", primaryProvider.GetProviderName()),
+	)
 
 	var lastErr error
 
@@ -188,7 +411,6 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 		"last_error":  lastErr.Error(),
 		"tried_count": len(providerChain),
 	})
-
 }
 
 func validateCompletionRequest(req *types.Completion) error {
@@ -206,12 +428,11 @@ func validateCompletionRequest(req *types.Completion) error {
 		}
 	}
 
-	// Check total message length (approximate)
 	totalLength := 0
 	for _, msg := range req.Messages {
 		totalLength += len(msg.Content)
 	}
-	if totalLength > 1000000 { // 1MB limit
+	if totalLength > 1000000 {
 		return fmt.Errorf("total message content too large (max 1MB)")
 	}
 

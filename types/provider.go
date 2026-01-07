@@ -30,3 +30,8 @@ type ProviderConfigWithExtras struct {
 	Timeout  int
 	Limits   ProviderLimits
 }
+
+type ProviderWithModel struct {
+	Provider Provider
+	Model    string
+}

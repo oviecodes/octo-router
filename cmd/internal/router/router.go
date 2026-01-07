@@ -31,8 +31,17 @@ func ConfigureRouterStrategy(routingData *types.RoutingData, providerManager *pr
 		}
 
 		routerStrategy = router
+	case "cost-based":
+		router, err := NewCostRouter(providerManager, routingData.CostOptions)
+
+		if err != nil {
+			logger.Error("Could not set up the cost-based router", zap.Error(err))
+			return nil, nil, err
+		}
+
+		routerStrategy = router
 	default:
-		return nil, nil, fmt.Errorf("unsupported routing strategy: %s (supported: round-robin)", routingData.Strategy)
+		return nil, nil, fmt.Errorf("unsupported routing strategy: %s (supported: round-robin, cost-based)", routingData.Strategy)
 	}
 
 	return routerStrategy, routingData.Fallbacks, nil

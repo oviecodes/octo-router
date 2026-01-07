@@ -35,6 +35,15 @@ const (
 	ModelGeminiPro20       = "gemini/gemini-2.0-pro"
 )
 
+type ModelTier string
+
+const (
+	TierUltraPremium ModelTier = "ultra-premium"
+	TierPremium      ModelTier = "premium"
+	TierStandard     ModelTier = "standard"
+	TierBudget       ModelTier = "budget"
+)
+
 type ModelInfo struct {
 	ID              string
 	Provider        string
@@ -42,19 +51,12 @@ type ModelInfo struct {
 	InputCostPer1M  float64 // USD per 1M input tokens
 	OutputCostPer1M float64 // USD per 1M output tokens
 	ContextWindow   int     // Max context tokens
+	Tier            ModelTier
 }
 
 // Models catalog with pricing and metadata
 var Models = map[string]ModelInfo{
-	// OpenAI Models
-	ModelOpenAIGPT5: {
-		ID:              ModelOpenAIGPT5,
-		Provider:        ProviderOpenAI,
-		Name:            "GPT-5",
-		InputCostPer1M:  5.00,
-		OutputCostPer1M: 15.00,
-		ContextWindow:   200000,
-	},
+	// OpenAI Models - Ultra-Premium Tier
 	ModelOpenAIGPT51: {
 		ID:              ModelOpenAIGPT51,
 		Provider:        ProviderOpenAI,
@@ -62,7 +64,19 @@ var Models = map[string]ModelInfo{
 		InputCostPer1M:  7.50,
 		OutputCostPer1M: 22.50,
 		ContextWindow:   200000,
+		Tier:            TierUltraPremium,
 	},
+	ModelOpenAIGPT5: {
+		ID:              ModelOpenAIGPT5,
+		Provider:        ProviderOpenAI,
+		Name:            "GPT-5",
+		InputCostPer1M:  5.00,
+		OutputCostPer1M: 15.00,
+		ContextWindow:   200000,
+		Tier:            TierUltraPremium,
+	},
+
+	// OpenAI Models - Premium Tier
 	ModelOpenAIGPT4o: {
 		ID:              ModelOpenAIGPT4o,
 		Provider:        ProviderOpenAI,
@@ -70,15 +84,10 @@ var Models = map[string]ModelInfo{
 		InputCostPer1M:  2.50,
 		OutputCostPer1M: 10.00,
 		ContextWindow:   128000,
+		Tier:            TierPremium,
 	},
-	ModelOpenAIGPT4oMini: {
-		ID:              ModelOpenAIGPT4oMini,
-		Provider:        ProviderOpenAI,
-		Name:            "GPT-4o Mini",
-		InputCostPer1M:  0.15,
-		OutputCostPer1M: 0.60,
-		ContextWindow:   128000,
-	},
+
+	// OpenAI Models - Standard Tier
 	ModelOpenAIGPT35Turbo: {
 		ID:              ModelOpenAIGPT35Turbo,
 		Provider:        ProviderOpenAI,
@@ -86,9 +95,21 @@ var Models = map[string]ModelInfo{
 		InputCostPer1M:  0.50,
 		OutputCostPer1M: 1.50,
 		ContextWindow:   16385,
+		Tier:            TierStandard,
 	},
 
-	// Anthropic Models
+	// OpenAI Models - Budget Tier
+	ModelOpenAIGPT4oMini: {
+		ID:              ModelOpenAIGPT4oMini,
+		Provider:        ProviderOpenAI,
+		Name:            "GPT-4o Mini",
+		InputCostPer1M:  0.15,
+		OutputCostPer1M: 0.60,
+		ContextWindow:   128000,
+		Tier:            TierBudget,
+	},
+
+	// Anthropic Models - Ultra-Premium Tier
 	ModelAnthropicOpus45: {
 		ID:              ModelAnthropicOpus45,
 		Provider:        ProviderAnthropic,
@@ -96,7 +117,10 @@ var Models = map[string]ModelInfo{
 		InputCostPer1M:  15.00,
 		OutputCostPer1M: 75.00,
 		ContextWindow:   200000,
+		Tier:            TierUltraPremium,
 	},
+
+	// Anthropic Models - Premium Tier
 	ModelAnthropicSonnet4: {
 		ID:              ModelAnthropicSonnet4,
 		Provider:        ProviderAnthropic,
@@ -104,7 +128,10 @@ var Models = map[string]ModelInfo{
 		InputCostPer1M:  3.00,
 		OutputCostPer1M: 15.00,
 		ContextWindow:   200000,
+		Tier:            TierPremium,
 	},
+
+	// Anthropic Models - Standard Tier
 	ModelAnthropicHaiku45: {
 		ID:              ModelAnthropicHaiku45,
 		Provider:        ProviderAnthropic,
@@ -112,6 +139,7 @@ var Models = map[string]ModelInfo{
 		InputCostPer1M:  0.80,
 		OutputCostPer1M: 4.00,
 		ContextWindow:   200000,
+		Tier:            TierStandard,
 	},
 	ModelAnthropicHaiku3: {
 		ID:              ModelAnthropicHaiku3,
@@ -120,9 +148,21 @@ var Models = map[string]ModelInfo{
 		InputCostPer1M:  0.25,
 		OutputCostPer1M: 1.25,
 		ContextWindow:   200000,
+		Tier:            TierStandard,
 	},
 
-	// Gemini Models
+	// Gemini Models - Premium Tier
+	ModelGeminiPro20: {
+		ID:              ModelGeminiPro20,
+		Provider:        ProviderGemini,
+		Name:            "Gemini 2.0 Pro",
+		InputCostPer1M:  1.25,
+		OutputCostPer1M: 5.00,
+		ContextWindow:   2000000,
+		Tier:            TierPremium,
+	},
+
+	// Gemini Models - Budget Tier
 	ModelGeminiFlash25: {
 		ID:              ModelGeminiFlash25,
 		Provider:        ProviderGemini,
@@ -130,6 +170,7 @@ var Models = map[string]ModelInfo{
 		InputCostPer1M:  0.075,
 		OutputCostPer1M: 0.30,
 		ContextWindow:   1000000,
+		Tier:            TierBudget,
 	},
 	ModelGeminiFlash25Lite: {
 		ID:              ModelGeminiFlash25Lite,
@@ -138,14 +179,7 @@ var Models = map[string]ModelInfo{
 		InputCostPer1M:  0.0375,
 		OutputCostPer1M: 0.15,
 		ContextWindow:   1000000,
-	},
-	ModelGeminiPro20: {
-		ID:              ModelGeminiPro20,
-		Provider:        ProviderGemini,
-		Name:            "Gemini 2.0 Pro",
-		InputCostPer1M:  1.25,
-		OutputCostPer1M: 5.00,
-		ContextWindow:   2000000,
+		Tier:            TierBudget,
 	},
 }
 
@@ -211,7 +245,6 @@ func MapToGeminiModel(modelID string) (string, error) {
 	}
 }
 
-// CalculateCost calculates the cost for a request in USD
 func CalculateCost(modelID string, inputTokens, outputTokens int) (float64, error) {
 	info, err := GetModelInfo(modelID)
 	if err != nil {
@@ -224,7 +257,6 @@ func CalculateCost(modelID string, inputTokens, outputTokens int) (float64, erro
 	return inputCost + outputCost, nil
 }
 
-// ListModelsByProvider returns all models for a given provider
 func ListModelsByProvider(providerName string) []ModelInfo {
 	var models []ModelInfo
 	for _, model := range Models {
@@ -246,4 +278,43 @@ func ValidateModelID(modelID string) (string, error) {
 	}
 
 	return provider, nil
+}
+
+func ListModelsByTier(tier ModelTier) []ModelInfo {
+	var models []ModelInfo
+	for _, model := range Models {
+		if model.Tier == tier {
+			models = append(models, model)
+		}
+	}
+	return models
+}
+
+func ListModelsByProviderAndTier(providerName string, tier ModelTier) []ModelInfo {
+	var models []ModelInfo
+	for _, model := range Models {
+		if model.Provider == providerName && model.Tier == tier {
+			models = append(models, model)
+		}
+	}
+	return models
+}
+
+func FindCheapestModel(models []ModelInfo) (ModelInfo, error) {
+	if len(models) == 0 {
+		return ModelInfo{}, fmt.Errorf("no models provided")
+	}
+
+	cheapest := models[0]
+	cheapestAvgCost := (cheapest.InputCostPer1M + cheapest.OutputCostPer1M) / 2
+
+	for _, model := range models[1:] {
+		avgCost := (model.InputCostPer1M + model.OutputCostPer1M) / 2
+		if avgCost < cheapestAvgCost {
+			cheapest = model
+			cheapestAvgCost = avgCost
+		}
+	}
+
+	return cheapest, nil
 }
