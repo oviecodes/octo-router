@@ -111,18 +111,20 @@ func (o *OpenAIProvider) Complete(ctx context.Context, input *types.CompletionIn
 
 func (o *OpenAIProvider) CompleteStream(ctx context.Context, input *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {
 	ctx, cancel := context.WithTimeout(ctx, o.timeout)
-	defer cancel()
 
 	modelToUse := o.model
 	// standardModelID := o.standardModelID
 	if input.Model != "" {
 		sdkModel, err := MapToOpenAIModel(input.Model)
 		if err != nil {
+			defer cancel()
 			return nil, fmt.Errorf("invalid openai model: %w", err)
 		}
 		modelToUse = sdkModel
 		// standardModelID = input.Model
 	}
+
+	fmt.Printf("model to use %v \n", modelToUse)
 
 	openAIMessages := o.convertMessages(input.Messages)
 
@@ -136,6 +138,7 @@ func (o *OpenAIProvider) CompleteStream(ctx context.Context, input *types.Stream
 	chunks := make(chan *types.StreamChunk)
 
 	go func() {
+		defer cancel()
 		defer close(chunks)
 
 		for stream.Next() {

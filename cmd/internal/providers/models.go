@@ -30,9 +30,11 @@ const (
 )
 
 const (
+	ModelGeminiPro3        = "gemini/gemini-3-pro"
+	ModelGeminiFlash3      = "gemini/gemini-3-flash"
+	ModelGeminiPro25       = "gemini/gemini-2.5-pro"
 	ModelGeminiFlash25     = "gemini/gemini-2.5-flash"
 	ModelGeminiFlash25Lite = "gemini/gemini-2.5-flash-lite"
-	ModelGeminiPro20       = "gemini/gemini-2.0-pro"
 )
 
 type ModelTier string
@@ -48,13 +50,12 @@ type ModelInfo struct {
 	ID              string
 	Provider        string
 	Name            string
-	InputCostPer1M  float64 // USD per 1M input tokens
-	OutputCostPer1M float64 // USD per 1M output tokens
-	ContextWindow   int     // Max context tokens
+	InputCostPer1M  float64
+	OutputCostPer1M float64
+	ContextWindow   int
 	Tier            ModelTier
 }
 
-// Models catalog with pricing and metadata
 var Models = map[string]ModelInfo{
 	// OpenAI Models - Ultra-Premium Tier
 	ModelOpenAIGPT51: {
@@ -152,32 +153,54 @@ var Models = map[string]ModelInfo{
 	},
 
 	// Gemini Models - Premium Tier
-	ModelGeminiPro20: {
-		ID:              ModelGeminiPro20,
+	ModelGeminiPro3: {
+		ID:              ModelGeminiPro3,
 		Provider:        ProviderGemini,
-		Name:            "Gemini 2.0 Pro",
-		InputCostPer1M:  1.25,
-		OutputCostPer1M: 5.00,
-		ContextWindow:   2000000,
+		Name:            "Gemini 3.0 Pro",
+		InputCostPer1M:  2.00,
+		OutputCostPer1M: 12.00,
+		ContextWindow:   1000000,
 		Tier:            TierPremium,
 	},
 
-	// Gemini Models - Budget Tier
+	ModelGeminiPro25: {
+		ID:              ModelGeminiPro25,
+		Provider:        ProviderGemini,
+		Name:            "Gemini 2.5 Pro",
+		InputCostPer1M:  1.25,
+		OutputCostPer1M: 10.00,
+		ContextWindow:   1000000,
+		Tier:            TierPremium,
+	},
+
+	// Gemini Models - Standard Tier
+	ModelGeminiFlash3: {
+		ID:              ModelGeminiFlash3,
+		Provider:        ProviderGemini,
+		Name:            "Gemini 3.0 Flash",
+		InputCostPer1M:  0.50,
+		OutputCostPer1M: 3.00,
+		ContextWindow:   1000000,
+		Tier:            TierStandard,
+	},
+
 	ModelGeminiFlash25: {
 		ID:              ModelGeminiFlash25,
 		Provider:        ProviderGemini,
 		Name:            "Gemini 2.5 Flash",
-		InputCostPer1M:  0.075,
-		OutputCostPer1M: 0.30,
+		InputCostPer1M:  0.30,
+		OutputCostPer1M: 2.50,
 		ContextWindow:   1000000,
-		Tier:            TierBudget,
+		Tier:            TierStandard,
 	},
+
+	// Gemini Models - Budget Tier
 	ModelGeminiFlash25Lite: {
 		ID:              ModelGeminiFlash25Lite,
 		Provider:        ProviderGemini,
 		Name:            "Gemini 2.5 Flash Lite",
-		InputCostPer1M:  0.0375,
-		OutputCostPer1M: 0.15,
+		InputCostPer1M:  0.10,
+		OutputCostPer1M: 0.40,
 		ContextWindow:   1000000,
 		Tier:            TierBudget,
 	},
@@ -234,12 +257,16 @@ func MapToAnthropicModel(modelID string) (anthropic.Model, error) {
 
 func MapToGeminiModel(modelID string) (string, error) {
 	switch modelID {
+	case ModelGeminiPro3:
+		return "gemini-3-pro-preview", nil
+	case ModelGeminiFlash3:
+		return "gemini-3-flash-preview", nil
+	case ModelGeminiPro25:
+		return "gemini-2.5-pro", nil
 	case ModelGeminiFlash25:
 		return "gemini-2.5-flash", nil
 	case ModelGeminiFlash25Lite:
 		return "gemini-2.5-flash-lite", nil
-	case ModelGeminiPro20:
-		return "gemini-2.0-pro", nil
 	default:
 		return "", fmt.Errorf("unknown Gemini model: %s", modelID)
 	}

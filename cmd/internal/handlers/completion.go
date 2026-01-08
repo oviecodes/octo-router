@@ -23,7 +23,7 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 	providerName := provider.GetProviderName()
 	circuitBreaker := circuitBreakers[providerName]
 
-	chunks, err := provider.CompleteStream(c.Request.Context(), &types.StreamCompletionInput{
+	chunks, err := provider.CompleteStream(context.Background(), &types.StreamCompletionInput{
 		Model:    model,
 		Messages: request.Messages,
 	})
@@ -100,6 +100,8 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 		})
 		return
 	}
+
+	fmt.Printf("current model: %v \n", model)
 
 	if request.Stream {
 		HandleStreamingCompletion(resolver, c, provider, model, request)

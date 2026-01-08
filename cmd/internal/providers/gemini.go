@@ -143,13 +143,13 @@ func (g *GeminiProvider) Complete(ctx context.Context, input *types.CompletionIn
 
 func (g *GeminiProvider) CompleteStream(ctx context.Context, input *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
-	defer cancel()
 
 	modelToUse := g.model
 	if input.Model != "" {
 
 		sdkModel, err := MapToGeminiModel(input.Model)
 		if err != nil {
+			defer cancel()
 			return nil, fmt.Errorf("invalid gemini model: %w", err)
 		}
 		modelToUse = sdkModel
@@ -165,6 +165,7 @@ func (g *GeminiProvider) CompleteStream(ctx context.Context, input *types.Stream
 	)
 
 	if err != nil {
+		defer cancel()
 		return nil, err
 	}
 
@@ -173,12 +174,13 @@ func (g *GeminiProvider) CompleteStream(ctx context.Context, input *types.Stream
 	chunks := make(chan *types.StreamChunk)
 
 	go func() {
+		defer cancel()
 		defer close(chunks)
 
 		for chunk, err := range stream {
 			if err != nil {
 				logger.Error("Streaming error occurred", zap.Error(err))
-				providerErr := providererrors.TranslateOpenAIError(err)
+				providerErr := providererrors.TranslateGeminiError(err)
 
 				chunks <- &types.StreamChunk{
 					Content: "",

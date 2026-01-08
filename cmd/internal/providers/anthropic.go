@@ -114,14 +114,15 @@ func (a *AnthropicProvider) Complete(ctx context.Context, input *types.Completio
 }
 
 func (a *AnthropicProvider) CompleteStream(ctx context.Context, input *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {
+	// Create timeout context but don't defer cancel yet - it will be called in the goroutine
 	ctx, cancel := context.WithTimeout(ctx, a.timeout)
-	defer cancel()
 
 	modelToUse := a.model
 	// standardModelID := a.standardModelID
 	if input.Model != "" {
 		sdkModel, err := MapToAnthropicModel(input.Model)
 		if err != nil {
+			cancel() // Clean up context on error
 			return nil, fmt.Errorf("invalid anthropic model: %w", err)
 		}
 		modelToUse = sdkModel
@@ -139,6 +140,7 @@ func (a *AnthropicProvider) CompleteStream(ctx context.Context, input *types.Str
 	chunks := make(chan *types.StreamChunk)
 	message := anthropic.Message{}
 	go func() {
+		defer cancel() // Cancel context when streaming is done
 		defer close(chunks)
 
 		for stream.Next() {
@@ -177,7 +179,7 @@ func (a *AnthropicProvider) CompleteStream(ctx context.Context, input *types.Str
 
 		if err := stream.Err(); err != nil {
 			logger.Sugar().Errorf("An error occurred while streaming: %v", err)
-			providerErr := providererrors.TranslateOpenAIError(err)
+			providerErr := providererrors.TranslateAnthropicError(err)
 			chunks <- &types.StreamChunk{
 				Content: "",
 				Done:    true,
