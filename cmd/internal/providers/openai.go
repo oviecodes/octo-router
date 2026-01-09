@@ -111,7 +111,7 @@ func (o *OpenAIProvider) Complete(ctx context.Context, input *types.CompletionIn
 	return &types.CompletionResponse{
 		Message: response,
 		Headers: map[string]string{
-			"X-Request-Cost": strconv.FormatFloat(cost, 'f', -1, 64),
+			"cost": strconv.FormatFloat(cost, 'f', -1, 64),
 		},
 	}, nil
 }

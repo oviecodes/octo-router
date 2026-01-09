@@ -181,6 +181,8 @@ func handleCompletionWithModelChain(
 			zap.Int("attempt_number", i+1),
 		)
 
+		fmt.Printf("cost is %v: \n", response.Headers["cost"])
+
 		c.Header("X-Request-Cost", response.Headers["cost"])
 
 		c.JSON(http.StatusOK, gin.H{
@@ -257,6 +259,8 @@ func handleCompletionWithProviderChain(
 			zap.String("provider", currentProviderName),
 			zap.Int("attempt_number", i+1),
 		)
+
+		fmt.Printf("cost is %v: \n", response.Headers["cost"])
 
 		c.Header("X-Request-Cost", response.Headers["cost"])
 
