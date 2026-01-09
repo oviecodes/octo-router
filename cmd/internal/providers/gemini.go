@@ -7,6 +7,7 @@ import (
 	"llm-router/cmd/internal/metrics"
 	providererrors "llm-router/cmd/internal/provider_errors"
 	"llm-router/types"
+	"strconv"
 	"time"
 
 	"github.com/pkoukk/tiktoken-go"
@@ -29,7 +30,7 @@ type GeminiProvider struct {
 	timeout         time.Duration
 }
 
-func (g *GeminiProvider) Complete(ctx context.Context, input *types.CompletionInput) (*types.Message, error) {
+func (g *GeminiProvider) Complete(ctx context.Context, input *types.CompletionInput) (*types.CompletionResponse, error) {
 	start := time.Now()
 	providerName := g.GetProviderName()
 
@@ -111,6 +112,8 @@ func (g *GeminiProvider) Complete(ctx context.Context, input *types.CompletionIn
 	metrics.ProviderRequestsTotal.WithLabelValues(providerName, status).Inc()
 	metrics.ProviderRequestDuration.WithLabelValues(providerName).Observe(duration)
 
+	headers := make(map[string]string)
+
 	if res.UsageMetadata != nil {
 		inputTokens := int(res.UsageMetadata.PromptTokenCount)
 		outputTokens := int(res.UsageMetadata.CandidatesTokenCount)
@@ -126,6 +129,7 @@ func (g *GeminiProvider) Complete(ctx context.Context, input *types.CompletionIn
 				zap.Error(err),
 			)
 		} else {
+			headers["cost"] = strconv.FormatFloat(cost, 'f', -1, 64)
 			metrics.ProviderCostTotal.WithLabelValues(providerName).Add(cost)
 			logger.Debug("Request cost calculated",
 				zap.String("provider", providerName),
@@ -138,7 +142,10 @@ func (g *GeminiProvider) Complete(ctx context.Context, input *types.CompletionIn
 	}
 
 	response = g.convertToRouterMessage(res.Candidates[0].Content.Parts[0].Text)
-	return response, nil
+	return &types.CompletionResponse{
+		Message: *response,
+		Headers: headers,
+	}, nil
 }
 
 func (g *GeminiProvider) CompleteStream(ctx context.Context, input *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {

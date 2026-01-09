@@ -155,7 +155,7 @@ func handleCompletionWithModelChain(
 			zap.String("circuit_state", currentCircuitBreaker.GetState()),
 		)
 
-		response, err := resilience.Do(ctx, currentProviderName, retry, func(ctx context.Context) (*types.Message, error) {
+		response, err := resilience.Do(ctx, currentProviderName, retry, func(ctx context.Context) (*types.CompletionResponse, error) {
 			return currentProvider.Complete(ctx, &types.CompletionInput{
 				Model:    currentModel,
 				Messages: request.Messages,
@@ -181,9 +181,11 @@ func handleCompletionWithModelChain(
 			zap.Int("attempt_number", i+1),
 		)
 
+		c.Header("X-Request-Cost", response.Headers["cost"])
+
 		c.JSON(http.StatusOK, gin.H{
-			"message":  response.Content,
-			"role":     response.Role,
+			"message":  response.Message.Content,
+			"role":     response.Message.Role,
 			"provider": currentProviderName,
 			"model":    currentModel,
 		})
@@ -232,7 +234,7 @@ func handleCompletionWithProviderChain(
 			zap.String("circuit_state", currentCircuitBreaker.GetState()),
 		)
 
-		response, err := resilience.Do(ctx, currentProviderName, retry, func(ctx context.Context) (*types.Message, error) {
+		response, err := resilience.Do(ctx, currentProviderName, retry, func(ctx context.Context) (*types.CompletionResponse, error) {
 			return currentProvider.Complete(ctx, &types.CompletionInput{
 				Model:    "",
 				Messages: request.Messages,
@@ -256,9 +258,11 @@ func handleCompletionWithProviderChain(
 			zap.Int("attempt_number", i+1),
 		)
 
+		c.Header("X-Request-Cost", response.Headers["cost"])
+
 		c.JSON(http.StatusOK, gin.H{
-			"message":  response.Content,
-			"role":     response.Role,
+			"message":  response.Message.Content,
+			"role":     response.Message.Role,
 			"provider": currentProviderName,
 		})
 		return

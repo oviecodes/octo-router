@@ -8,6 +8,7 @@ import (
 	providererrors "llm-router/cmd/internal/provider_errors"
 	"llm-router/types"
 	"llm-router/utils"
+	"strconv"
 	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
@@ -33,7 +34,7 @@ type AnthropicProvider struct {
 	timeout         time.Duration
 }
 
-func (a *AnthropicProvider) Complete(ctx context.Context, input *types.CompletionInput) (*types.Message, error) {
+func (a *AnthropicProvider) Complete(ctx context.Context, input *types.CompletionInput) (*types.CompletionResponse, error) {
 	start := time.Now()
 	providerName := a.GetProviderName()
 
@@ -110,7 +111,12 @@ func (a *AnthropicProvider) Complete(ctx context.Context, input *types.Completio
 	}
 
 	response := a.convertToRouterMessage(message)
-	return response, nil
+	return &types.CompletionResponse{
+		Message: *response,
+		Headers: map[string]string{
+			"cost": strconv.FormatFloat(cost, 'f', -1, 64),
+		},
+	}, nil
 }
 
 func (a *AnthropicProvider) CompleteStream(ctx context.Context, input *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {

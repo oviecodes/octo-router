@@ -6,7 +6,10 @@ A production-ready, open-source LLM router built in Go. Route requests across mu
 
 - **Multi-Provider Support**: OpenAI, Anthropic (Claude), and Google Gemini
 - **Standardized Model Naming**: Consistent `provider/model` format with built-in pricing metadata
-- **Flexible Routing**: Round-robin load balancing with support for custom routing strategies
+- **Intelligent Routing**:
+  - **Cost-Based Routing**: Automatically select the cheapest model based on tier constraints
+  - **Round-Robin**: Distribute load evenly across providers
+  - **Tier-Based Selection**: Control quality/cost trade-offs with tier constraints (budget, standard, premium, ultra-premium)
 - **Fallback Chain**: Automatic failover to backup providers when primary provider fails
 - **Provider-Specific Defaults**: Configure model and token limits per provider
 - **Input Validation**: Comprehensive request validation with detailed error messages
@@ -288,10 +291,10 @@ llm-router/
 Currently supported:
 
 - **Round-robin**: Distributes requests evenly across enabled providers
+- **Cost-based routing**: Pick the cheapest model for a request depending on the tier set in config.yaml
 
 Planned:
 
-- Cost-based routing
 - Latency-based routing
 - Provider-specific routing rules
 
@@ -315,9 +318,9 @@ The fallback chain provides automatic failover when the primary provider fails, 
 routing:
   strategy: round-robin
   fallbacks:
-    - anthropic  # Try Anthropic first if primary fails
-    - gemini     # Then try Gemini
-    - openai     # Finally try OpenAI
+    - anthropic # Try Anthropic first if primary fails
+    - gemini # Then try Gemini
+    - openai # Finally try OpenAI
 ```
 
 **Example Flow:**

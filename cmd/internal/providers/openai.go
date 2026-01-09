@@ -7,6 +7,7 @@ import (
 	"llm-router/cmd/internal/metrics"
 	providererrors "llm-router/cmd/internal/provider_errors"
 	"llm-router/types"
+	"strconv"
 	"time"
 
 	"github.com/openai/openai-go/v3"
@@ -30,7 +31,7 @@ type OpenAIProvider struct {
 	timeout         time.Duration
 }
 
-func (o *OpenAIProvider) Complete(ctx context.Context, input *types.CompletionInput) (*types.Message, error) {
+func (o *OpenAIProvider) Complete(ctx context.Context, input *types.CompletionInput) (*types.CompletionResponse, error) {
 	start := time.Now()
 	providerName := o.GetProviderName()
 
@@ -106,7 +107,13 @@ func (o *OpenAIProvider) Complete(ctx context.Context, input *types.CompletionIn
 	}
 
 	response := o.convertToRouterMessage(chatCompletion)
-	return &response, nil
+
+	return &types.CompletionResponse{
+		Message: response,
+		Headers: map[string]string{
+			"X-Request-Cost": strconv.FormatFloat(cost, 'f', -1, 64),
+		},
+	}, nil
 }
 
 func (o *OpenAIProvider) CompleteStream(ctx context.Context, input *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {
