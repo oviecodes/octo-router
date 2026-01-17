@@ -101,8 +101,6 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("current model: %v \n", model)
-
 	if request.Stream {
 		HandleStreamingCompletion(resolver, c, provider, model, request)
 		return
@@ -181,8 +179,6 @@ func handleCompletionWithModelChain(
 			zap.Int("attempt_number", i+1),
 		)
 
-		fmt.Printf("cost is %v: \n", response.Headers["cost"])
-
 		c.Header("X-Request-Cost", response.Headers["cost"])
 
 		c.JSON(http.StatusOK, gin.H{
@@ -259,8 +255,6 @@ func handleCompletionWithProviderChain(
 			zap.String("provider", currentProviderName),
 			zap.Int("attempt_number", i+1),
 		)
-
-		fmt.Printf("cost is %v: \n", response.Headers["cost"])
 
 		c.Header("X-Request-Cost", response.Headers["cost"])
 
