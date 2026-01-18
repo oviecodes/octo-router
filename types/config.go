@@ -2,6 +2,17 @@ package types
 
 type ModelData struct {
 	DefaultModels map[string]DefaultModels `mapstructure:"defaults"`
+	Catalog       []ModelConfig            `mapstructure:"catalog"`
+}
+
+type ModelConfig struct {
+	ID              string  `mapstructure:"id"`
+	Provider        string  `mapstructure:"provider"`
+	Name            string  `mapstructure:"name"`
+	InputCostPer1M  float64 `mapstructure:"inputCost"`
+	OutputCostPer1M float64 `mapstructure:"outputCost"`
+	ContextWindow   int     `mapstructure:"contextWindow"`
+	Tier            string  `mapstructure:"tier"`
 }
 
 type DefaultModels struct {

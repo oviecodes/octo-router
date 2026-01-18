@@ -5,6 +5,15 @@ import (
 	"testing"
 )
 
+func init() {
+	InitializeModelRegistry([]types.ModelConfig{
+		{ID: "openai/gpt-4o-mini", Provider: "openai", Name: "GPT-4o Mini"},
+		{ID: "gemini/gemini-2.5-flash", Provider: "gemini", Name: "Gemini Flash"},
+		{ID: "anthropic/claude-haiku-3", Provider: "anthropic", Name: "Claude Haiku"},
+		{ID: "test-model", Provider: "unknown-provider", Name: "Test Model"},
+	}, nil)
+}
+
 var providerConfigs = []types.ProviderConfigWithExtras{
 	{
 		Name:    "openai",

@@ -49,6 +49,9 @@ func SetUpApp() *App {
 		os.Exit(1)
 	}
 
+	// Initialize model registry from config
+	providers.InitializeModelRegistry(providers.GetDefaultCatalog(), cfg.Models.Catalog)
+
 	// Initialize provider manager
 	providerManager, err := initializeProviderManager(cfg)
 	if err != nil {

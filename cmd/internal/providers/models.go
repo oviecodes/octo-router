@@ -3,6 +3,9 @@ package providers
 import (
 	"fmt"
 	"strings"
+	"sync"
+
+	"llm-router/types"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/openai/openai-go/v3"
@@ -56,154 +59,40 @@ type ModelInfo struct {
 	Tier            ModelTier
 }
 
-var Models = map[string]ModelInfo{
-	// OpenAI Models - Ultra-Premium Tier
-	ModelOpenAIGPT51: {
-		ID:              ModelOpenAIGPT51,
-		Provider:        ProviderOpenAI,
-		Name:            "GPT-5.1",
-		InputCostPer1M:  7.50,
-		OutputCostPer1M: 22.50,
-		ContextWindow:   200000,
-		Tier:            TierUltraPremium,
-	},
-	ModelOpenAIGPT5: {
-		ID:              ModelOpenAIGPT5,
-		Provider:        ProviderOpenAI,
-		Name:            "GPT-5",
-		InputCostPer1M:  5.00,
-		OutputCostPer1M: 15.00,
-		ContextWindow:   200000,
-		Tier:            TierUltraPremium,
-	},
+var (
+	modelRegistry = make(map[string]ModelInfo)
+	registryMu    sync.RWMutex
+)
 
-	// OpenAI Models - Premium Tier
-	ModelOpenAIGPT4o: {
-		ID:              ModelOpenAIGPT4o,
-		Provider:        ProviderOpenAI,
-		Name:            "GPT-4o",
-		InputCostPer1M:  2.50,
-		OutputCostPer1M: 10.00,
-		ContextWindow:   128000,
-		Tier:            TierPremium,
-	},
+func InitializeModelRegistry(defaults []types.ModelConfig, overrides []types.ModelConfig) {
+	registryMu.Lock()
+	defer registryMu.Unlock()
 
-	// OpenAI Models - Standard Tier
-	ModelOpenAIGPT35Turbo: {
-		ID:              ModelOpenAIGPT35Turbo,
-		Provider:        ProviderOpenAI,
-		Name:            "GPT-3.5 Turbo",
-		InputCostPer1M:  0.50,
-		OutputCostPer1M: 1.50,
-		ContextWindow:   16385,
-		Tier:            TierStandard,
-	},
+	// clear existing
+	modelRegistry = make(map[string]ModelInfo)
 
-	// OpenAI Models - Budget Tier
-	ModelOpenAIGPT4oMini: {
-		ID:              ModelOpenAIGPT4oMini,
-		Provider:        ProviderOpenAI,
-		Name:            "GPT-4o Mini",
-		InputCostPer1M:  0.15,
-		OutputCostPer1M: 0.60,
-		ContextWindow:   128000,
-		Tier:            TierBudget,
-	},
+	// Load defaults first
+	for _, cfg := range defaults {
+		addToRegistry(cfg)
+	}
 
-	// Anthropic Models - Ultra-Premium Tier
-	ModelAnthropicOpus45: {
-		ID:              ModelAnthropicOpus45,
-		Provider:        ProviderAnthropic,
-		Name:            "Claude Opus 4.5",
-		InputCostPer1M:  15.00,
-		OutputCostPer1M: 75.00,
-		ContextWindow:   200000,
-		Tier:            TierUltraPremium,
-	},
+	// Apply overrides (will overwrite existing IDs)
+	for _, cfg := range overrides {
+		addToRegistry(cfg)
+	}
+}
 
-	// Anthropic Models - Premium Tier
-	ModelAnthropicSonnet4: {
-		ID:              ModelAnthropicSonnet4,
-		Provider:        ProviderAnthropic,
-		Name:            "Claude Sonnet 4",
-		InputCostPer1M:  3.00,
-		OutputCostPer1M: 15.00,
-		ContextWindow:   200000,
-		Tier:            TierPremium,
-	},
-
-	// Anthropic Models - Standard Tier
-	ModelAnthropicHaiku45: {
-		ID:              ModelAnthropicHaiku45,
-		Provider:        ProviderAnthropic,
-		Name:            "Claude Haiku 4.5",
-		InputCostPer1M:  0.80,
-		OutputCostPer1M: 4.00,
-		ContextWindow:   200000,
-		Tier:            TierStandard,
-	},
-	ModelAnthropicHaiku3: {
-		ID:              ModelAnthropicHaiku3,
-		Provider:        ProviderAnthropic,
-		Name:            "Claude Haiku 3",
-		InputCostPer1M:  0.25,
-		OutputCostPer1M: 1.25,
-		ContextWindow:   200000,
-		Tier:            TierStandard,
-	},
-
-	// Gemini Models - Premium Tier
-	ModelGeminiPro3: {
-		ID:              ModelGeminiPro3,
-		Provider:        ProviderGemini,
-		Name:            "Gemini 3.0 Pro",
-		InputCostPer1M:  2.00,
-		OutputCostPer1M: 12.00,
-		ContextWindow:   1000000,
-		Tier:            TierPremium,
-	},
-
-	ModelGeminiPro25: {
-		ID:              ModelGeminiPro25,
-		Provider:        ProviderGemini,
-		Name:            "Gemini 2.5 Pro",
-		InputCostPer1M:  1.25,
-		OutputCostPer1M: 10.00,
-		ContextWindow:   1000000,
-		Tier:            TierPremium,
-	},
-
-	// Gemini Models - Standard Tier
-	ModelGeminiFlash3: {
-		ID:              ModelGeminiFlash3,
-		Provider:        ProviderGemini,
-		Name:            "Gemini 3.0 Flash",
-		InputCostPer1M:  0.50,
-		OutputCostPer1M: 3.00,
-		ContextWindow:   1000000,
-		Tier:            TierStandard,
-	},
-
-	ModelGeminiFlash25: {
-		ID:              ModelGeminiFlash25,
-		Provider:        ProviderGemini,
-		Name:            "Gemini 2.5 Flash",
-		InputCostPer1M:  0.30,
-		OutputCostPer1M: 2.50,
-		ContextWindow:   1000000,
-		Tier:            TierStandard,
-	},
-
-	// Gemini Models - Budget Tier
-	ModelGeminiFlash25Lite: {
-		ID:              ModelGeminiFlash25Lite,
-		Provider:        ProviderGemini,
-		Name:            "Gemini 2.5 Flash Lite",
-		InputCostPer1M:  0.10,
-		OutputCostPer1M: 0.40,
-		ContextWindow:   1000000,
-		Tier:            TierBudget,
-	},
+func addToRegistry(cfg types.ModelConfig) {
+	info := ModelInfo{
+		ID:              cfg.ID,
+		Provider:        cfg.Provider,
+		Name:            cfg.Name,
+		InputCostPer1M:  cfg.InputCostPer1M,
+		OutputCostPer1M: cfg.OutputCostPer1M,
+		ContextWindow:   cfg.ContextWindow,
+		Tier:            ModelTier(cfg.Tier),
+	}
+	modelRegistry[cfg.ID] = info
 }
 
 func ParseModelID(modelID string) (provider, model string, err error) {
@@ -215,7 +104,10 @@ func ParseModelID(modelID string) (provider, model string, err error) {
 }
 
 func GetModelInfo(modelID string) (ModelInfo, error) {
-	info, exists := Models[modelID]
+	registryMu.RLock()
+	defer registryMu.RUnlock()
+
+	info, exists := modelRegistry[modelID]
 	if !exists {
 		return ModelInfo{}, fmt.Errorf("unknown model: %s", modelID)
 	}
@@ -285,8 +177,11 @@ func CalculateCost(modelID string, inputTokens, outputTokens int) (float64, erro
 }
 
 func ListModelsByProvider(providerName string) []ModelInfo {
+	registryMu.RLock()
+	defer registryMu.RUnlock()
+
 	var models []ModelInfo
-	for _, model := range Models {
+	for _, model := range modelRegistry {
 		if model.Provider == providerName {
 			models = append(models, model)
 		}
@@ -308,8 +203,11 @@ func ValidateModelID(modelID string) (string, error) {
 }
 
 func ListModelsByTier(tier ModelTier) []ModelInfo {
+	registryMu.RLock()
+	defer registryMu.RUnlock()
+
 	var models []ModelInfo
-	for _, model := range Models {
+	for _, model := range modelRegistry {
 		if model.Tier == tier {
 			models = append(models, model)
 		}
@@ -318,8 +216,11 @@ func ListModelsByTier(tier ModelTier) []ModelInfo {
 }
 
 func ListModelsByProviderAndTier(providerName string, tier ModelTier) []ModelInfo {
+	registryMu.RLock()
+	defer registryMu.RUnlock()
+
 	var models []ModelInfo
-	for _, model := range Models {
+	for _, model := range modelRegistry {
 		if model.Provider == providerName && model.Tier == tier {
 			models = append(models, model)
 		}
