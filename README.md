@@ -8,6 +8,8 @@ A production-ready, open-source LLM router built in Go. Route requests across mu
 - **Standardized Model Naming**: Consistent `provider/model` format with built-in pricing metadata
 - **Intelligent Routing**:
   - **Cost-Based Routing**: Automatically select the cheapest model based on tier constraints
+  - **Latency-Based Routing**: Auto-select fastest provider using real-time EMA tracking
+  - **Weighted Routing**: Distribute traffic based on percentage weights (e.g., 70/20/10)
   - **Round-Robin**: Distribute load evenly across providers
   - **Tier-Based Selection**: Control quality/cost trade-offs with tier constraints (budget, standard, premium, ultra-premium)
 - **Fallback Chain**: Automatic failover to backup providers when primary provider fails
@@ -81,7 +83,14 @@ models:
       maxTokens: 8192
 
 routing:
-  strategy: round-robin
+  strategy: weighted # cost-based, round-robin, latency-based, weighted
+  
+  # Weights (must sum to any number, normalized automatically)
+  weights:
+    openai: 70
+    anthropic: 20
+    gemini: 10
+
   fallbacks:
     - anthropic
     - gemini
@@ -292,10 +301,11 @@ Currently supported:
 
 - **Round-robin**: Distributes requests evenly across enabled providers
 - **Cost-based routing**: Pick the cheapest model for a request depending on the tier set in config.yaml
+- **Latency-based routing**: Dynamically routes to the fastest provider using Exponential Moving Average (EMA) tracking
+- **Weighted routing**: Routes traffic based on user-defined weights (e.g., A=80%, B=20%)
 
 Planned:
 
-- Latency-based routing
 - Provider-specific routing rules
 
 ### Fallback Chain
