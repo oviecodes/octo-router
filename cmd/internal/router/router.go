@@ -50,9 +50,15 @@ func ConfigureRouterStrategy(routingData *types.RoutingData, providerManager *pr
 		routerStrategy = router
 
 	case "weighted":
+		router, err := NewWeightedRouter(providerManager, routingData.Weights)
+		if err != nil {
+			logger.Error("Could not set up the weighted router", zap.Error(err))
+			return nil, nil, err
+		}
+		routerStrategy = router
 
 	default:
-		return nil, nil, fmt.Errorf("unsupported routing strategy: %s (supported: round-robin, cost-based, latency-based)", routingData.Strategy)
+		return nil, nil, fmt.Errorf("unsupported routing strategy: %s (supported: round-robin, cost-based, latency-based, weighted)", routingData.Strategy)
 	}
 
 	return routerStrategy, routingData.Fallbacks, nil

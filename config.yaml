@@ -12,7 +12,7 @@ providers:
     enabled: true  # Can disable providers
 
 routing:
-  strategy: "latency-based" # one of "cost-based", "round-robin", "weighted", "latency-based"
+  strategy: "weighted" # one of "cost-based", "round-robin", "weighted", "latency-based"
 
   # Cost-based routing options
   costOptions:
@@ -20,11 +20,12 @@ routing:
     minimumTier: ""              # Minimum tier to use - never go below this (optional)
     tierStrategy: "same-tier"    # "same-tier", "allow-downgrade", "cheapest"
 
-# If weighted strategy:
+  # Weights for weighted routing (provider name: weight)
+  # keys must match provider names (lowercase)
   weights:
+    gemini: 10
     openai: 70
     anthropic: 20
-    gemini: 10
 
   # Fallback chain
   fallbacks:
