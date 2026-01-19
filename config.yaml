@@ -1,0 +1,162 @@
+providers:
+  - name: openai
+    apiKey: ${OPENAI_API_KEY}
+    enabled: true
+  
+  - name: anthropic
+    apiKey: ${ANTHROPIC_API_KEY}
+    enabled: true
+  
+  - name: gemini
+    apiKey: ${GEMINI_API_KEY}
+    enabled: true  # Can disable providers
+
+routing:
+  strategy: "latency-based" # one of "cost-based", "round-robin", "weighted", "latency-based"
+
+  # Cost-based routing options
+  costOptions:
+    defaultTier: "premium"      # Default tier when not specified in request (optional)
+    minimumTier: ""              # Minimum tier to use - never go below this (optional)
+    tierStrategy: "same-tier"    # "same-tier", "allow-downgrade", "cheapest"
+
+# If weighted strategy:
+  weights:
+    openai: 70
+    anthropic: 20
+    gemini: 10
+
+  # Fallback chain
+  fallbacks:
+    - openai
+    - anthropic
+    - gemini
+
+  # strategy: "intelligent"
+  
+  # rules:
+  #   # Route based on prompt characteristics
+  #   - condition: tokens > 10000
+  #     provider: "anthropic"  # Claude is better at long context
+    
+  #   - condition: prompt.contains("code")
+  #     provider: "openai"
+  #     model: "openai/gpt-4o"
+
+  #   - condition: priority == "low"
+  #     provider: "gemini"
+  #     model: "gemini/gemini-2.5-flash-lite"  # Cheapest option
+
+models:
+  defaults:
+    openai:
+      model: "openai/gpt-4o-mini"
+      maxTokens: 4096
+
+    anthropic:
+      model: "anthropic/claude-haiku-3"
+      maxTokens: 4096
+
+    gemini:
+      model: "gemini/gemini-2.5-flash-lite"
+      maxTokens: 4096
+
+  catalog:
+    # Standard models are built-in (OpenAI, Anthropic, Gemini).
+    # Use this section to ADD new models or OVERRIDE existing ones.
+    
+    # Example: Override cost for GPT-4o
+    # - id: "openai/gpt-4o"
+    #   provider: "openai"
+    #   name: "GPT-4o (Special Rate)"
+    #   inputCost: 2.00
+    #   outputCost: 8.00
+    #   contextWindow: 128000
+    #   tier: "premium"
+
+    # Example: Add a local Ollama model (Future proofing)
+    # - id: "ollama/llama3"
+    #   provider: "ollama"  # Requires generic provider implementation
+    #   name: "Llama 3 Local"
+    #   inputCost: 0
+    #   outputCost: 0
+    #   contextWindow: 8192
+    #   tier: "budget"
+
+  # Route specific prompts to specific models
+  rules:
+    - if: prompt.length > 5000
+      use: "anthropic/claude-sonnet-4"  # Better at long context
+
+    - if: task == "code-generation"
+      use: "openai/gpt-4o"  # Better at code
+
+    - if: priority == "high"
+      use: "openai/gpt-4o"  # Fastest, most capable
+      provider: "openai"
+
+cache:
+  enabled: true
+  ttl: 3600  # Cache for 1 hour
+  
+  # Semantic caching (advanced)
+  semantic:
+    enabled: false # Start with exact match
+    similarityThreshold: 0.95  # 95% similar = cache hit
+  
+  # What to cache
+  rules:
+    - cache: true
+      if: request.temperature == 0  # Deterministic requests
+    
+    - cache: false
+      if: request.user == "premium"
+
+limits:
+  # Per-user rate limits
+  requestsPerMinute: 100
+  requestsPerDay: 10000
+  
+  # Budget controls
+  dailyBudget: 50.00  # Stop after $50/day
+  alertThreshold: 40.00  # Alert at $40
+  
+  # Per-provider limits (respect their rate limits)
+  providers:
+    openai:
+      requestsPerMinute: 60
+    anthropic:
+      requestsPerMinute: 50
+
+resilience:
+  timeout: 30000  # 30 second timeout
+  
+  retries:
+    maxAttempts: 3
+    initialDelay: 1000  # 1 second
+    maxDelay: 10000     # 10 seconds
+    backoffMultiplier: 2  # Exponential backoff
+  
+  circuitBreaker:
+    failureThreshold: 5  # Open after 5 failures
+    resetTimeout: 60000
+
+costManagement:
+  # Automatically switch to cheaper models when approaching budget
+  autoDowngrade:
+    enabled: true
+    threshold: 0.9  # At 90% of budget, use cheaper models
+    
+  # Warn users about expensive requests
+  warnExpensiveRequests:
+    enabled: true
+    threshold: 0.10  # Warn if single request > $0.10
+
+experiments:
+  - name: "claude-vs-gpt4"
+    enabled: true
+    traffic: 0.1  # 10% of requests
+    variants:
+      control: {provider: "openai", model: "openai/gpt-4o"}
+      treatment: {provider: "anthropic", model: "anthropic/claude-sonnet-4"}
+  

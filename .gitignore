@@ -1,6 +1,4 @@
 .env
-config.yaml
-config.yml
 docs/
 config_test.yaml
 config_test.yml
