@@ -6,6 +6,7 @@ import (
 	"llm-router/cmd/internal/metrics"
 	providererrors "llm-router/cmd/internal/provider_errors"
 	"math"
+	"math/rand"
 	"time"
 
 	"go.uber.org/zap"
@@ -77,7 +78,7 @@ func Do[T any](ctx context.Context, provider string, r *Retry, handler func(cont
 }
 
 func (r *Retry) calculateBackoff(attempt int) time.Duration {
-	backoff := float64(r.config.initialDelay) * math.Pow(float64(r.config.backoffMultiplier), float64(attempt))
+	backoff := float64(r.config.initialDelay) * float64(rand.Intn(20)) * math.Pow(float64(r.config.backoffMultiplier), float64(attempt))
 	delay := min(time.Duration(backoff), time.Duration(r.config.maxDelay))
 
 	return delay

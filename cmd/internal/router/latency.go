@@ -1,45 +1,49 @@
 package router
 
-import "sync"
+import (
+	"sync"
+)
+
+const (
+	DefaultEMAAlpha = 0.2
+)
 
 type LatencyTracker struct {
-	mu                sync.Mutex
-	slidingWindowSize int
-	latencies         map[string][]float64
+	mu     sync.RWMutex
+	alpha  float64
+	scores map[string]float64
 }
 
-func NewLatencyTracker(slidingWindowSize int) *LatencyTracker {
+func NewLatencyTracker() *LatencyTracker {
 	return &LatencyTracker{
-		slidingWindowSize: slidingWindowSize,
-		latencies:         make(map[string][]float64),
+		alpha:  DefaultEMAAlpha,
+		scores: make(map[string]float64),
 	}
 }
 
-func (lt *LatencyTracker) RecordLatency(provider string, latency float64) {
+func (lt *LatencyTracker) RecordLatency(provider string, latencyMs float64) {
 	lt.mu.Lock()
 	defer lt.mu.Unlock()
 
-	lt.latencies[provider] = append(lt.latencies[provider], latency)
-
-	if len(lt.latencies[provider]) > lt.slidingWindowSize {
-		lt.latencies[provider] = lt.latencies[provider][1:]
+	currentScore, exists := lt.scores[provider]
+	if !exists {
+		lt.scores[provider] = latencyMs
+		return
 	}
+
+	// Exponential Moving Average
+	// NewAverage = (Alpha * NewValue) + ((1 - Alpha) * OldAverage)
+	newScore := (lt.alpha * latencyMs) + ((1 - lt.alpha) * currentScore)
+	lt.scores[provider] = newScore
 }
 
-func (lt *LatencyTracker) GetLatency(provider string) float64 {
-	lt.mu.Lock()
-	defer lt.mu.Unlock()
+func (lt *LatencyTracker) GetLatencyScore(provider string) float64 {
+	lt.mu.RLock()
+	defer lt.mu.RUnlock()
 
-	return lt.latencies[provider][len(lt.latencies[provider])-1]
-}
-
-func (lt *LatencyTracker) GetAverageLatency(provider string) float64 {
-	lt.mu.Lock()
-	defer lt.mu.Unlock()
-
-	var sum float64
-	for _, latency := range lt.latencies[provider] {
-		sum += latency
+	score, exists := lt.scores[provider]
+	if !exists {
+		return 0
 	}
-	return sum / float64(len(lt.latencies[provider]))
+	return score
 }

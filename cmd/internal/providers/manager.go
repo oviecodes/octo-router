@@ -44,6 +44,12 @@ func (pm *ProviderManager) Initialize(configs []types.ProviderConfigWithExtras) 
 	return nil
 }
 
+func (pm *ProviderManager) SetProviders(providers []types.Provider) {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+	pm.providers = providers
+}
+
 func (pm *ProviderManager) GetProviders() []types.Provider {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()
@@ -84,7 +90,6 @@ func (pm *ProviderManager) AddProvider(config types.ProviderConfigWithExtras) er
 		return fmt.Errorf("failed to create provider: %w", err)
 	}
 
-	// Check if provider already exists
 	for _, p := range pm.providers {
 		if p.GetProviderName() == provider.GetProviderName() {
 			return fmt.Errorf("provider %s already exists", provider.GetProviderName())
@@ -120,7 +125,6 @@ func (pm *ProviderManager) RemoveProvider(name string) error {
 	return fmt.Errorf("provider %s not found", name)
 }
 
-// HealthCheck performs a basic health check on all providers
 func (pm *ProviderManager) HealthCheck(ctx context.Context) map[string]bool {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()
@@ -128,8 +132,6 @@ func (pm *ProviderManager) HealthCheck(ctx context.Context) map[string]bool {
 	health := make(map[string]bool)
 
 	for _, provider := range pm.providers {
-		// Simple health check: just verify provider exists and has a name
-		// More sophisticated checks could be added here
 		name := provider.GetProviderName()
 		health[name] = name != ""
 	}

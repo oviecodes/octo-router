@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"llm-router/cmd/internal/cache"
 	"llm-router/cmd/internal/providers"
 	"llm-router/cmd/internal/resilience"
@@ -49,18 +48,21 @@ func SetUpApp() *App {
 		os.Exit(1)
 	}
 
-	// Initialize model registry from config
 	providers.InitializeModelRegistry(providers.GetDefaultCatalog(), cfg.Models.Catalog)
+	latencyTracker := router.NewLatencyTracker()
+	providerFactory := providers.NewProviderFactory()
 
-	// Initialize provider manager
-	providerManager, err := initializeProviderManager(cfg)
-	if err != nil {
-		logger.Error("Failed to initialize providers", zap.Error(err))
-		os.Exit(1)
+	rawProviders := providerFactory.CreateProviders(cfg.GetProviderConfigWithExtras())
+
+	var wrappedProviders []types.Provider
+	for _, p := range rawProviders {
+		wrappedProviders = append(wrappedProviders, router.NewLatencyMonitoringProvider(p, latencyTracker))
 	}
 
-	// Initialize router with provider manager
-	llmRouter, fallback, err := initializeRouter(cfg, providerManager)
+	providerManager := providers.NewProviderManager(providerFactory)
+	providerManager.SetProviders(wrappedProviders)
+
+	llmRouter, fallback, err := initializeRouter(cfg, providerManager, latencyTracker)
 	if err != nil {
 		logger.Error("Failed to initialize router", zap.Error(err))
 		os.Exit(1)
@@ -95,36 +97,12 @@ func SetUpApp() *App {
 	return app
 }
 
-func initializeProviderManager(cfg *config.Config) (*providers.ProviderManager, error) {
-	enabled := cfg.GetEnabledProviders()
-
-	if len(enabled) == 0 {
-		return nil, fmt.Errorf("no enabled providers found in config")
-	}
-
-	// Create factory and manager
-	factory := providers.NewProviderFactory()
-	manager := providers.NewProviderManager(factory)
-
-	// Initialize providers
-	if err := manager.Initialize(enabled); err != nil {
-		return nil, fmt.Errorf("failed to initialize providers: %w", err)
-	}
-
-	logger.Info("Provider manager initialized",
-		zap.Int("provider_count", manager.GetProviderCount()),
-		zap.Strings("providers", manager.ListProviderNames()),
-	)
-
-	return manager, nil
-}
-
-func initializeRouter(cfg *config.Config, providerManager *providers.ProviderManager) (router.Router, []string, error) {
+func initializeRouter(cfg *config.Config, providerManager *providers.ProviderManager, tracker *router.LatencyTracker) (router.Router, []string, error) {
 	routerStrategy := cfg.GetRouterStrategy()
 
 	logger.Info("Initializing router", zap.String("strategy", routerStrategy.Strategy))
 
-	llmRouter, fallback, err := router.ConfigureRouterStrategy(routerStrategy, providerManager)
+	llmRouter, fallback, err := router.ConfigureRouterStrategy(routerStrategy, providerManager, tracker)
 
 	return llmRouter, fallback, err
 }

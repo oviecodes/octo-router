@@ -44,12 +44,10 @@ var providerConfigs = []types.ProviderConfigWithExtras{
 	},
 }
 
-// Test provider factory
 func TestProviderFactory(t *testing.T) {
 	factory := NewProviderFactory()
 	providers := factory.CreateProviders(providerConfigs)
 
-	// should return all providers properly
 	if len(providers) != len(providerConfigs) {
 		t.Fatalf("expected length of %T to be equal to %v", providers, len(providerConfigs))
 	}
@@ -71,7 +69,6 @@ func TestProviderFactoryWithUnknownProvider(t *testing.T) {
 	factory := NewProviderFactory()
 	providers := factory.CreateProviders(configs)
 
-	// Should skip unknown providers
 	if len(providers) != 0 {
 		t.Errorf("expected 0 providers for unknown provider type, got %d", len(providers))
 	}
@@ -93,7 +90,6 @@ func TestProviderFactoryWithInvalidAPIKey(t *testing.T) {
 	factory := NewProviderFactory()
 	providers := factory.CreateProviders(configs)
 
-	// Should skip invalid providers
 	if len(providers) != 0 {
 		t.Errorf("expected 0 providers with invalid API key, got %d", len(providers))
 	}

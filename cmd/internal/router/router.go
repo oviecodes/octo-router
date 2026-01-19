@@ -17,7 +17,7 @@ type Router interface {
 
 var logger = utils.SetUpLogger()
 
-func ConfigureRouterStrategy(routingData *types.RoutingData, providerManager *providers.ProviderManager) (Router, []string, error) {
+func ConfigureRouterStrategy(routingData *types.RoutingData, providerManager *providers.ProviderManager, tracker *LatencyTracker) (Router, []string, error) {
 
 	var routerStrategy Router
 
@@ -40,8 +40,17 @@ func ConfigureRouterStrategy(routingData *types.RoutingData, providerManager *pr
 		}
 
 		routerStrategy = router
+
+	case "latency-based":
+		router, err := NewLatencyRouter(providerManager, tracker)
+		if err != nil {
+			logger.Error("Could not set up the latency-based router", zap.Error(err))
+			return nil, nil, err
+		}
+		routerStrategy = router
+
 	default:
-		return nil, nil, fmt.Errorf("unsupported routing strategy: %s (supported: round-robin, cost-based)", routingData.Strategy)
+		return nil, nil, fmt.Errorf("unsupported routing strategy: %s (supported: round-robin, cost-based, latency-based)", routingData.Strategy)
 	}
 
 	return routerStrategy, routingData.Fallbacks, nil

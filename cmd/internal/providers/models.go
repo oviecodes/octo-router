@@ -68,15 +68,12 @@ func InitializeModelRegistry(defaults []types.ModelConfig, overrides []types.Mod
 	registryMu.Lock()
 	defer registryMu.Unlock()
 
-	// clear existing
 	modelRegistry = make(map[string]ModelInfo)
 
-	// Load defaults first
 	for _, cfg := range defaults {
 		addToRegistry(cfg)
 	}
 
-	// Apply overrides (will overwrite existing IDs)
 	for _, cfg := range overrides {
 		addToRegistry(cfg)
 	}
@@ -114,7 +111,6 @@ func GetModelInfo(modelID string) (ModelInfo, error) {
 	return info, nil
 }
 
-// MapToOpenAIModel maps standardized model ID to OpenAI SDK model
 func MapToOpenAIModel(modelID string) (string, error) {
 	switch modelID {
 	case ModelOpenAIGPT5:

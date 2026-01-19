@@ -97,6 +97,11 @@ func (c *Config) GetEnabledProviders() []types.ProviderConfigWithExtras {
 	return enabled
 }
 
+// GetProviderConfigWithExtras is an alias for GetEnabledProviders for clarity
+func (c *Config) GetProviderConfigWithExtras() []types.ProviderConfigWithExtras {
+	return c.GetEnabledProviders()
+}
+
 func (c *Config) GetRouterStrategy() *types.RoutingData {
 	return &c.Routing
 }
