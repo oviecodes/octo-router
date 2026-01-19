@@ -49,6 +49,8 @@ func ConfigureRouterStrategy(routingData *types.RoutingData, providerManager *pr
 		}
 		routerStrategy = router
 
+	case "weighted":
+
 	default:
 		return nil, nil, fmt.Errorf("unsupported routing strategy: %s (supported: round-robin, cost-based, latency-based)", routingData.Strategy)
 	}
