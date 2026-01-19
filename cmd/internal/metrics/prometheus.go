@@ -102,6 +102,14 @@ var (
 			Help: "Total cache misses",
 		},
 	)
+
+	ProviderEMALatency = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "llm_router_provider_EMA_latency",
+			Help: "Tracks base latency for all providers",
+		},
+		[]string{"provider"},
+	)
 )
 
 func Metrics() error {
@@ -122,6 +130,7 @@ func Metrics() error {
 		CircuitBreakerState,
 		CircuitBreakerTrips,
 		RetryAttemptsTotal,
+		ProviderEMALatency,
 	)
 
 	mux.Handle("/metrics", promhttp.HandlerFor(

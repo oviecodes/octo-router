@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"llm-router/cmd/internal/metrics"
 	"llm-router/types"
 	"time"
 )
@@ -25,6 +26,8 @@ func (p *LatencyMonitoringProvider) Complete(ctx context.Context, input *types.C
 
 	if err == nil {
 		p.tracker.RecordLatency(p.Provider.GetProviderName(), duration)
+		score := p.tracker.GetLatencyScore(p.Provider.GetProviderName())
+		metrics.ProviderEMALatency.WithLabelValues("provider", p.Provider.GetProviderName()).Set(score)
 	}
 
 	return resp, err
@@ -42,6 +45,8 @@ func (p *LatencyMonitoringProvider) CompleteStream(ctx context.Context, input *t
 
 	if err == nil {
 		p.tracker.RecordLatency(p.Provider.GetProviderName(), duration)
+		score := p.tracker.GetLatencyScore(p.Provider.GetProviderName())
+		metrics.ProviderEMALatency.WithLabelValues("provider", p.Provider.GetProviderName()).Set(score)
 	}
 
 	return stream, err
