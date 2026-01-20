@@ -30,7 +30,12 @@ func (r *WeightedRouter) SelectProvider(ctx context.Context, deps *types.SelectP
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	allProviders := r.providerManager.GetProviders()
+	var allProviders []types.Provider
+	if len(deps.Candidates) > 0 {
+		allProviders = deps.Candidates
+	} else {
+		allProviders = r.providerManager.GetProviders()
+	}
 	var candidates []types.Provider
 
 	for _, p := range allProviders {

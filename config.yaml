@@ -27,6 +27,19 @@ routing:
     openai: 70
     anthropic: 20
 
+  # Pipeline Policies (The "Bouncer" Layer)
+  # policies:
+  #   semantic:
+  #     enabled: true
+  #     default_group: "general"
+  #     groups:
+  #       - name: "coding"
+  #         intent_keywords: ["code", "golang", "python", "javascript", "refactor"]
+  #         allow_providers: ["anthropic", "openai"] # Exclude small models for code
+  #       - name: "fast-chat"
+  #         intent_keywords: ["hi", "hello", "joke", "weather"]
+  #         allow_providers: ["gemini"] # Redirect simple queries to flash model
+
   # Fallback chain
   fallbacks:
     - openai

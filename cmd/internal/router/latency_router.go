@@ -21,7 +21,13 @@ func NewLatencyRouter(providerManager *providers.ProviderManager, tracker *Laten
 }
 
 func (r *LatencyRouter) SelectProvider(ctx context.Context, deps *types.SelectProviderInput) (*types.SelectedProviderOutput, error) {
-	allProviders := r.providerManager.GetProviders()
+	var allProviders []types.Provider
+	if len(deps.Candidates) > 0 {
+		allProviders = deps.Candidates
+	} else {
+		allProviders = r.providerManager.GetProviders()
+	}
+
 	if len(allProviders) == 0 {
 		return nil, fmt.Errorf("no providers available")
 	}

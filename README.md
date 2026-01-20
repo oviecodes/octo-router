@@ -410,7 +410,7 @@ export APP_ENV="development"  # or "production"
 - [ ] Request/response caching (semantic caching planned)
 - [ ] Cost tracking and reporting (cost calculation implemented)
 - [ ] Rate limiting per provider
-- [ ] Custom routing strategies
+- [x] Custom routing strategies
 - [ ] Function/Tool calling support
 - [ ] Multi-tenancy support
 

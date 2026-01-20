@@ -6,10 +6,27 @@ type CostOptions struct {
 	TierStrategy string `mapstructure:"tierStrategy"` // "same-tier", "allow-downgrade", "cheapest"
 }
 
+type SemanticGroup struct {
+	Name           string   `mapstructure:"name"`
+	IntentKeywords []string `mapstructure:"intent_keywords"`
+	AllowProviders []string `mapstructure:"allow_providers"`
+}
+
+type SemanticPolicy struct {
+	Enabled      bool            `mapstructure:"enabled"`
+	DefaultGroup string          `mapstructure:"default_group"`
+	Groups       []SemanticGroup `mapstructure:"groups"`
+}
+
+type Policies struct {
+	Semantic *SemanticPolicy `mapstructure:"semantic"`
+}
+
 type RoutingData struct {
 	Strategy    string         `mapstructure:"strategy"`
 	Weights     map[string]int `mapstructure:"weights"`
 	Fallbacks   []string       `mapstructure:"fallbacks"`
+	Policies    *Policies      `mapstructure:"policies"`
 	CostOptions *CostOptions   `mapstructure:"costOptions"`
 }
 
@@ -19,9 +36,10 @@ type RouterConfig struct {
 }
 
 type SelectProviderInput struct {
-	Circuits map[string]CircuitBreaker
-	Messages []Message
-	Tier     string // Requested tier (optional)
+	Circuits   map[string]CircuitBreaker
+	Messages   []Message
+	Tier       string     // Requested tier (optional)
+	Candidates []Provider // Optional: Pre-filtered list of providers (e.g. from Semantic Router)
 }
 
 type SelectedProviderOutput struct {

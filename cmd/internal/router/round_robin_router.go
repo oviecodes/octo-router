@@ -20,24 +20,32 @@ func (r *RoundRobinRouter) SelectProvider(ctx context.Context, deps *types.Selec
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	providerList := r.providerManager.GetProviders()
+	var providerList []types.Provider
+	if len(deps.Candidates) > 0 {
+		providerList = deps.Candidates
+	} else {
+		providerList = r.providerManager.GetProviders()
+	}
+
+	if len(providerList) == 0 {
+		return nil, fmt.Errorf("no available providers")
+	}
 
 	for range providerList {
-		provider := providerList[r.current]
-		r.current = (r.current + 1) % len(providerList)
+		idx := r.current % len(providerList)
+		provider := providerList[idx]
+		r.current = (idx + 1) % len(providerList)
 
 		breaker, ok := deps.Circuits[provider.GetProviderName()]
 
-		if !ok || !breaker.CanExecute() {
-			continue
+		if !ok || breaker.CanExecute() {
+			return &types.SelectedProviderOutput{
+				Provider: provider,
+			}, nil
 		}
-
-		return &types.SelectedProviderOutput{
-			Provider: provider,
-		}, nil
 	}
 
-	return nil, fmt.Errorf("no available providers")
+	return nil, fmt.Errorf("no healthy providers available")
 }
 
 func NewRoundRobinRouter(providerManager *providers.ProviderManager) (*RoundRobinRouter, error) {
