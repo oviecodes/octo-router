@@ -7,13 +7,19 @@ type CostOptions struct {
 }
 
 type SemanticGroup struct {
-	Name           string   `mapstructure:"name"`
-	IntentKeywords []string `mapstructure:"intent_keywords"`
-	AllowProviders []string `mapstructure:"allow_providers"`
+	Name               string   `mapstructure:"name"`
+	IntentKeywords     []string `mapstructure:"intent_keywords"`
+	IntentDescription  string   `mapstructure:"intent_description"`
+	Examples           []string `mapstructure:"examples"` // Few-shot examples for better matching
+	AllowProviders     []string `mapstructure:"allow_providers"`
+	RequiredCapability string   `mapstructure:"required_capability"`
 }
 
 type SemanticPolicy struct {
 	Enabled      bool            `mapstructure:"enabled"`
+	Engine       string          `mapstructure:"engine"` // "keyword", "embedding"
+	Threshold    float64         `mapstructure:"threshold"`
+	ModelPath    string          `mapstructure:"model_path"`
 	DefaultGroup string          `mapstructure:"default_group"`
 	Groups       []SemanticGroup `mapstructure:"groups"`
 }
@@ -43,6 +49,7 @@ type SelectProviderInput struct {
 }
 
 type SelectedProviderOutput struct {
-	Provider Provider
-	Model    string
+	Provider   Provider
+	Model      string
+	Candidates []Provider // The filtered pool of candidates
 }

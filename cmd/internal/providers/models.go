@@ -57,6 +57,7 @@ type ModelInfo struct {
 	OutputCostPer1M float64
 	ContextWindow   int
 	Tier            ModelTier
+	Capabilities    []string
 }
 
 var (
@@ -88,6 +89,7 @@ func addToRegistry(cfg types.ModelConfig) {
 		OutputCostPer1M: cfg.OutputCostPer1M,
 		ContextWindow:   cfg.ContextWindow,
 		Tier:            ModelTier(cfg.Tier),
+		Capabilities:    cfg.Capabilities,
 	}
 	modelRegistry[cfg.ID] = info
 }
@@ -241,4 +243,25 @@ func FindCheapestModel(models []ModelInfo) (ModelInfo, error) {
 	}
 
 	return cheapest, nil
+}
+
+func ListProvidersByCapability(capability string) []string {
+	registryMu.RLock()
+	defer registryMu.RUnlock()
+
+	providerSet := make(map[string]struct{})
+	for _, model := range modelRegistry {
+		for _, cap := range model.Capabilities {
+			if strings.EqualFold(cap, capability) {
+				providerSet[model.Provider] = struct{}{}
+				break
+			}
+		}
+	}
+
+	var providers []string
+	for p := range providerSet {
+		providers = append(providers, p)
+	}
+	return providers
 }

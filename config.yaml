@@ -28,17 +28,32 @@ routing:
     anthropic: 20
 
   # Pipeline Policies (The "Bouncer" Layer)
-  # policies:
-  #   semantic:
-  #     enabled: true
-  #     default_group: "general"
-  #     groups:
-  #       - name: "coding"
-  #         intent_keywords: ["code", "golang", "python", "javascript", "refactor"]
-  #         allow_providers: ["anthropic", "openai"] # Exclude small models for code
-  #       - name: "fast-chat"
-  #         intent_keywords: ["hi", "hello", "joke", "weather"]
-  #         allow_providers: ["gemini"] # Redirect simple queries to flash model
+  policies:
+    semantic:
+      enabled: true
+      engine: "embedding"  # Engines: "keyword" or "embedding"
+      threshold: 0.45      # Calibrated for MiniLM centroids
+      model_path: "assets/models/embedding.onnx"
+      default_group: "general"
+      groups:
+        - name: "coding"
+          intent_description: "General software development and programming tasks."
+          examples:
+            - "write a binary search algorithm in python"
+            - "how do I fix a null pointer exception in java?"
+            - "refactor this function to be more efficient"
+            - "write a unit test for this go struct"
+            - "implement a linked list in c++"
+          required_capability: "coding" 
+        - name: "fast-chat"
+          intent_description: "Simple conversational interactions and basic knowledge."
+          examples:
+            - "hello! how is your day going?"
+            - "tell me a joke about robots"
+            - "what is the capital of france?"
+            - "how cold is it in london today?"
+            - "who won the world cup in 2022?"
+          allow_providers: ["gemini"]
 
   # Fallback chain
   fallbacks:

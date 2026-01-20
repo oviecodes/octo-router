@@ -61,7 +61,11 @@ func (r *PipelineRouter) SelectProvider(ctx context.Context, input *types.Select
 	}
 
 	input.Candidates = candidates
-	return r.baseRouter.SelectProvider(ctx, input)
+	output, err := r.baseRouter.SelectProvider(ctx, input)
+	if err == nil {
+		output.Candidates = candidates
+	}
+	return output, err
 }
 
 func (r *PipelineRouter) GetProviderManager() *providers.ProviderManager {

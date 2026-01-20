@@ -13,6 +13,7 @@ func GetDefaultCatalog() []types.ModelConfig {
 			OutputCostPer1M: 22.50,
 			ContextWindow:   200000,
 			Tier:            "ultra-premium",
+			Capabilities:    []string{"coding", "reasoning", "creative"},
 		},
 		{
 			ID:              "openai/gpt-5",
@@ -22,6 +23,7 @@ func GetDefaultCatalog() []types.ModelConfig {
 			OutputCostPer1M: 15.00,
 			ContextWindow:   200000,
 			Tier:            "ultra-premium",
+			Capabilities:    []string{"coding", "reasoning", "creative"},
 		},
 		{
 			ID:              "openai/gpt-4o",
@@ -31,6 +33,7 @@ func GetDefaultCatalog() []types.ModelConfig {
 			OutputCostPer1M: 10.00,
 			ContextWindow:   128000,
 			Tier:            "premium",
+			Capabilities:    []string{"coding", "reasoning", "creative"},
 		},
 		{
 			ID:              "openai/gpt-3.5-turbo",
@@ -49,6 +52,7 @@ func GetDefaultCatalog() []types.ModelConfig {
 			OutputCostPer1M: 0.60,
 			ContextWindow:   128000,
 			Tier:            "budget",
+			Capabilities:    []string{"fast-chat", "extraction"},
 		},
 
 		// Anthropic Models
@@ -60,6 +64,7 @@ func GetDefaultCatalog() []types.ModelConfig {
 			OutputCostPer1M: 75.00,
 			ContextWindow:   200000,
 			Tier:            "ultra-premium",
+			Capabilities:    []string{"coding", "reasoning", "creative"},
 		},
 		{
 			ID:              "anthropic/claude-sonnet-4",
@@ -69,6 +74,7 @@ func GetDefaultCatalog() []types.ModelConfig {
 			OutputCostPer1M: 15.00,
 			ContextWindow:   200000,
 			Tier:            "premium",
+			Capabilities:    []string{"coding", "reasoning", "creative"},
 		},
 		{
 			ID:              "anthropic/claude-haiku-4.5",
@@ -87,6 +93,7 @@ func GetDefaultCatalog() []types.ModelConfig {
 			OutputCostPer1M: 1.25,
 			ContextWindow:   200000,
 			Tier:            "standard",
+			Capabilities:    []string{"fast-chat", "extraction"},
 		},
 
 		// Gemini Models
@@ -98,6 +105,7 @@ func GetDefaultCatalog() []types.ModelConfig {
 			OutputCostPer1M: 12.00,
 			ContextWindow:   1000000,
 			Tier:            "premium",
+			Capabilities:    []string{"coding", "reasoning", "creative"},
 		},
 		{
 			ID:              "gemini/gemini-2.5-pro",
@@ -134,6 +142,7 @@ func GetDefaultCatalog() []types.ModelConfig {
 			OutputCostPer1M: 0.40,
 			ContextWindow:   1000000,
 			Tier:            "budget",
+			Capabilities:    []string{"fast-chat", "extraction"},
 		},
 	}
 }

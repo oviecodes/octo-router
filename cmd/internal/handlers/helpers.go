@@ -7,9 +7,18 @@ import (
 	"go.uber.org/zap"
 )
 
-func buildProviderChain(primaryProvider types.Provider, fallbackNames []string, manager *providers.ProviderManager) []types.Provider {
+func buildProviderChain(primaryProvider types.Provider, fallbackNames []string, manager *providers.ProviderManager, candidates []types.Provider) []types.Provider {
 	providerChain := make([]types.Provider, 0, len(fallbackNames)+1)
 	seen := make(map[string]bool)
+
+	// Create a map for fast candidate lookup if candidates are provided
+	allowed := make(map[string]bool)
+	useFilter := len(candidates) > 0
+	if useFilter {
+		for _, c := range candidates {
+			allowed[c.GetProviderName()] = true
+		}
+	}
 
 	primaryName := primaryProvider.GetProviderName()
 	providerChain = append(providerChain, primaryProvider)
@@ -17,6 +26,10 @@ func buildProviderChain(primaryProvider types.Provider, fallbackNames []string, 
 
 	for _, fallbackName := range fallbackNames {
 		if seen[fallbackName] {
+			continue
+		}
+
+		if useFilter && !allowed[fallbackName] {
 			continue
 		}
 
@@ -37,10 +50,20 @@ func buildProviderChainWithModels(
 	primaryProvider types.Provider,
 	fallbackNames []string,
 	manager *providers.ProviderManager,
+	candidates []types.Provider,
 	logger *zap.Logger,
 ) []types.ProviderWithModel {
 	chain := make([]types.ProviderWithModel, 0, len(fallbackNames)+1)
 	seen := make(map[string]bool)
+
+	// Create lookup table for allowed candidates
+	allowed := make(map[string]bool)
+	useFilter := len(candidates) > 0
+	if useFilter {
+		for _, c := range candidates {
+			allowed[c.GetProviderName()] = true
+		}
+	}
 
 	primaryModelInfo, err := providers.GetModelInfo(primaryModel)
 	if err != nil {
@@ -49,7 +72,7 @@ func buildProviderChainWithModels(
 			zap.Error(err),
 		)
 
-		return buildSimpleChainWithModels(primaryModel, primaryProvider, fallbackNames, manager)
+		return buildSimpleChainWithModels(primaryModel, primaryProvider, fallbackNames, manager, candidates)
 	}
 
 	primaryTier := primaryModelInfo.Tier
@@ -68,6 +91,10 @@ func buildProviderChainWithModels(
 
 	for _, fallbackName := range fallbackNames {
 		if seen[fallbackName] {
+			continue
+		}
+
+		if useFilter && !allowed[fallbackName] {
 			continue
 		}
 
@@ -111,9 +138,19 @@ func buildSimpleChainWithModels(
 	primaryProvider types.Provider,
 	fallbackNames []string,
 	manager *providers.ProviderManager,
+	candidates []types.Provider,
 ) []types.ProviderWithModel {
 	chain := make([]types.ProviderWithModel, 0, len(fallbackNames)+1)
 	seen := make(map[string]bool)
+
+	// Create lookup table for allowed candidates
+	allowed := make(map[string]bool)
+	useFilter := len(candidates) > 0
+	if useFilter {
+		for _, c := range candidates {
+			allowed[c.GetProviderName()] = true
+		}
+	}
 
 	primaryName := primaryProvider.GetProviderName()
 	chain = append(chain, types.ProviderWithModel{
@@ -124,6 +161,10 @@ func buildSimpleChainWithModels(
 
 	for _, fallbackName := range fallbackNames {
 		if seen[fallbackName] {
+			continue
+		}
+
+		if useFilter && !allowed[fallbackName] {
 			continue
 		}
 

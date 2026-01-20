@@ -107,9 +107,9 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 	}
 
 	if model != "" {
-		handleCompletionWithModelChain(ctx, resolver, c, provider, model, circuitBreakers, retry, request)
+		handleCompletionWithModelChain(ctx, resolver, c, provider, model, providerStruct.Candidates, circuitBreakers, retry, request)
 	} else {
-		handleCompletionWithProviderChain(ctx, resolver, c, provider, circuitBreakers, retry, request)
+		handleCompletionWithProviderChain(ctx, resolver, c, provider, providerStruct.Candidates, circuitBreakers, retry, request)
 	}
 }
 
@@ -119,6 +119,7 @@ func handleCompletionWithModelChain(
 	c *gin.Context,
 	primaryProvider types.Provider,
 	primaryModel string,
+	candidates []types.Provider,
 	circuitBreakers map[string]types.CircuitBreaker,
 	retry *resilience.Retry,
 	request types.Completion,
@@ -128,6 +129,7 @@ func handleCompletionWithModelChain(
 		primaryProvider,
 		resolver.GetFallbackChain(),
 		resolver.GetProviderManager(),
+		candidates,
 		resolver.GetLogger(),
 	)
 
@@ -207,12 +209,13 @@ func handleCompletionWithProviderChain(
 	resolver app.ConfigResolver,
 	c *gin.Context,
 	primaryProvider types.Provider,
+	candidates []types.Provider,
 	circuitBreakers map[string]types.CircuitBreaker,
 	retry *resilience.Retry,
 	request types.Completion,
 ) {
 
-	providerChain := buildProviderChain(primaryProvider, resolver.GetFallbackChain(), resolver.GetProviderManager())
+	providerChain := buildProviderChain(primaryProvider, resolver.GetFallbackChain(), resolver.GetProviderManager(), candidates)
 
 	resolver.GetLogger().Info("Provider-only chain built",
 		zap.Int("chain_length", len(providerChain)),

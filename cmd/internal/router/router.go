@@ -60,9 +60,23 @@ func ConfigureRouterStrategy(routingData *types.RoutingData, providerManager *pr
 		pipeline := NewPipelineRouter(routerStrategy, providerManager)
 
 		if routingData.Policies.Semantic != nil && routingData.Policies.Semantic.Enabled {
-			semanticFilter := filters.NewKeywordFilter(routingData.Policies.Semantic)
+			var semanticFilter ProviderFilter
+			var filterErr error
+
+			if routingData.Policies.Semantic.Engine == "embedding" {
+				semanticFilter, filterErr = filters.NewEmbeddingFilter(routingData.Policies.Semantic)
+				if filterErr != nil {
+					logger.Error("Could not set up embedding filter, falling back to keywords", zap.Error(filterErr))
+					semanticFilter = filters.NewKeywordFilter(routingData.Policies.Semantic)
+				} else {
+					logger.Info("Enabled Semantic (Embedding) Filter in Routing Pipeline")
+				}
+			} else {
+				semanticFilter = filters.NewKeywordFilter(routingData.Policies.Semantic)
+				logger.Info("Enabled Semantic (Keyword) Filter in Routing Pipeline")
+			}
+
 			pipeline.AddFilter(semanticFilter)
-			logger.Info("Enabled Semantic (Keyword) Filter in Routing Pipeline")
 		}
 
 		// If filters were added, use pipeline as the strategy.
