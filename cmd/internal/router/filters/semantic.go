@@ -4,15 +4,19 @@ import (
 	"context"
 	"llm-router/types"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 type KeywordFilter struct {
 	policy *types.SemanticPolicy
+	logger *zap.Logger
 }
 
-func NewKeywordFilter(policy *types.SemanticPolicy) *KeywordFilter {
+func NewKeywordFilter(policy *types.SemanticPolicy, logger *zap.Logger) *KeywordFilter {
 	return &KeywordFilter{
 		policy: policy,
+		logger: logger,
 	}
 }
 
@@ -20,9 +24,10 @@ func (f *KeywordFilter) Name() string {
 	return "Semantic(Keyword)"
 }
 
-func (f *KeywordFilter) Filter(ctx context.Context, candidates []types.Provider, input *types.SelectProviderInput) ([]types.Provider, error) {
+func (f *KeywordFilter) Filter(ctx context.Context, input *types.FilterInput) (*types.FilterOutput, error) {
+	candidates := input.Candidates
 	if f.policy == nil || !f.policy.Enabled {
-		return candidates, nil
+		return &types.FilterOutput{Candidates: candidates}, nil
 	}
 
 	var promptBuilder strings.Builder
@@ -38,12 +43,19 @@ func (f *KeywordFilter) Filter(ctx context.Context, candidates []types.Provider,
 		for _, keyword := range group.IntentKeywords {
 			if strings.Contains(prompt, strings.ToLower(keyword)) {
 				matchedGroup = group.Name
+				f.logger.Debug("Keyword match found", zap.String("keyword", keyword), zap.String("group", group.Name))
 				break
 			}
 		}
 		if matchedGroup != f.policy.DefaultGroup {
 			break
 		}
+	}
+
+	if matchedGroup == f.policy.DefaultGroup {
+		f.logger.Info("No keyword match found, using default group", zap.String("default_group", matchedGroup))
+	} else {
+		f.logger.Info("Semantic match found (Keyword)", zap.String("intent", matchedGroup))
 	}
 
 	var allowList []string
@@ -58,11 +70,11 @@ func (f *KeywordFilter) Filter(ctx context.Context, candidates []types.Provider,
 	}
 
 	if !foundGroup {
-		return candidates, nil
+		return &types.FilterOutput{Candidates: candidates}, nil
 	}
 
 	if len(allowList) == 0 {
-		return candidates, nil
+		return &types.FilterOutput{Candidates: candidates}, nil
 	}
 
 	var filtered []types.Provider
@@ -80,5 +92,5 @@ func (f *KeywordFilter) Filter(ctx context.Context, candidates []types.Provider,
 		}
 	}
 
-	return filtered, nil
+	return &types.FilterOutput{Candidates: filtered}, nil
 }

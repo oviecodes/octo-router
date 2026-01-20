@@ -7,7 +7,6 @@ import (
 	"llm-router/cmd/internal/metrics"
 	providererrors "llm-router/cmd/internal/provider_errors"
 	"llm-router/types"
-	"strconv"
 	"time"
 
 	"github.com/pkoukk/tiktoken-go"
@@ -112,16 +111,18 @@ func (g *GeminiProvider) Complete(ctx context.Context, input *types.CompletionIn
 	metrics.ProviderRequestsTotal.WithLabelValues(providerName, status).Inc()
 	metrics.ProviderRequestDuration.WithLabelValues(providerName).Observe(duration)
 
-	headers := make(map[string]string)
+	usage := &types.Usage{}
+	var costUSD float64
 
 	if res.UsageMetadata != nil {
-		inputTokens := int(res.UsageMetadata.PromptTokenCount)
-		outputTokens := int(res.UsageMetadata.CandidatesTokenCount)
+		usage.PromptTokens = int(res.UsageMetadata.PromptTokenCount)
+		usage.CompletionTokens = int(res.UsageMetadata.CandidatesTokenCount)
+		usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
 
-		metrics.ProviderTokensUsed.WithLabelValues(providerName, "input").Add(float64(inputTokens))
-		metrics.ProviderTokensUsed.WithLabelValues(providerName, "output").Add(float64(outputTokens))
+		metrics.ProviderTokensUsed.WithLabelValues(providerName, "input").Add(float64(usage.PromptTokens))
+		metrics.ProviderTokensUsed.WithLabelValues(providerName, "output").Add(float64(usage.CompletionTokens))
 
-		cost, err := CalculateCost(standardModelID, inputTokens, outputTokens)
+		cost, err := CalculateCost(standardModelID, usage.PromptTokens, usage.CompletionTokens)
 		if err != nil {
 			logger.Warn("Failed to calculate cost",
 				zap.String("provider", providerName),
@@ -129,13 +130,13 @@ func (g *GeminiProvider) Complete(ctx context.Context, input *types.CompletionIn
 				zap.Error(err),
 			)
 		} else {
-			headers["cost"] = strconv.FormatFloat(cost, 'f', -1, 64)
+			costUSD = cost
 			metrics.ProviderCostTotal.WithLabelValues(providerName).Add(cost)
 			logger.Debug("Request cost calculated",
 				zap.String("provider", providerName),
 				zap.String("model", standardModelID),
-				zap.Int("input_tokens", inputTokens),
-				zap.Int("output_tokens", outputTokens),
+				zap.Int("input_tokens", usage.PromptTokens),
+				zap.Int("output_tokens", usage.CompletionTokens),
 				zap.Float64("cost_usd", cost),
 			)
 		}
@@ -144,7 +145,8 @@ func (g *GeminiProvider) Complete(ctx context.Context, input *types.CompletionIn
 	response = g.convertToRouterMessage(res.Candidates[0].Content.Parts[0].Text)
 	return &types.CompletionResponse{
 		Message: *response,
-		Headers: headers,
+		Usage:   *usage,
+		CostUSD: costUSD,
 	}, nil
 }
 

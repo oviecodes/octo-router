@@ -7,7 +7,6 @@ import (
 	"llm-router/cmd/internal/metrics"
 	providererrors "llm-router/cmd/internal/provider_errors"
 	"llm-router/types"
-	"strconv"
 	"time"
 
 	"github.com/openai/openai-go/v3"
@@ -110,9 +109,12 @@ func (o *OpenAIProvider) Complete(ctx context.Context, input *types.CompletionIn
 
 	return &types.CompletionResponse{
 		Message: response,
-		Headers: map[string]string{
-			"cost": strconv.FormatFloat(cost, 'f', -1, 64),
+		Usage: types.Usage{
+			PromptTokens:     inputTokens,
+			CompletionTokens: outputTokens,
+			TotalTokens:      inputTokens + outputTokens,
 		},
+		CostUSD: cost,
 	}, nil
 }
 

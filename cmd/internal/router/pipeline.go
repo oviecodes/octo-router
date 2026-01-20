@@ -8,7 +8,7 @@ import (
 )
 
 type ProviderFilter interface {
-	Filter(ctx context.Context, candidates []types.Provider, input *types.SelectProviderInput) ([]types.Provider, error)
+	Filter(ctx context.Context, input *types.FilterInput) (*types.FilterOutput, error)
 	Name() string
 }
 
@@ -16,14 +16,20 @@ type PipelineRouter struct {
 	baseRouter      Router
 	filters         []ProviderFilter
 	providerManager *providers.ProviderManager
+	budgetManager   *BudgetManager
 }
 
-func NewPipelineRouter(baseRouter Router, manager *providers.ProviderManager) *PipelineRouter {
+func NewPipelineRouter(baseRouter Router, manager *providers.ProviderManager, budget *BudgetManager) *PipelineRouter {
 	return &PipelineRouter{
 		baseRouter:      baseRouter,
 		filters:         make([]ProviderFilter, 0),
 		providerManager: manager,
+		budgetManager:   budget,
 	}
+}
+
+func (r *PipelineRouter) GetBudgetManager() *BudgetManager {
+	return r.budgetManager
 }
 
 func (r *PipelineRouter) AddFilter(filter ProviderFilter) {
@@ -51,10 +57,15 @@ func (r *PipelineRouter) SelectProvider(ctx context.Context, input *types.Select
 
 	var err error
 	for _, filter := range r.filters {
-		candidates, err = filter.Filter(ctx, candidates, input)
+		filterOutput, err := filter.Filter(ctx, &types.FilterInput{
+			Candidates: candidates,
+			Messages:   input.Messages,
+			Tier:       input.Tier,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("filter %s failed: %w", filter.Name(), err)
 		}
+		candidates = filterOutput.Candidates
 		if len(candidates) == 0 {
 			return nil, fmt.Errorf("filter %s filtered out all providers", filter.Name())
 		}

@@ -52,7 +52,7 @@ func TestLatencyRouter_EndToEnd_Convergence(t *testing.T) {
 	manager := providers.NewProviderManager(factory)
 	manager.SetProviders(wrappedProviders)
 
-	lr, err := router.NewLatencyRouter(manager, tracker)
+	lr, err := router.NewLatencyRouter(manager, tracker, nil)
 	if err != nil {
 		t.Fatalf("Failed to create router: %v", err)
 	}

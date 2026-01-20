@@ -14,39 +14,47 @@ import (
 type Router interface {
 	SelectProvider(ctx context.Context, deps *types.SelectProviderInput) (*types.SelectedProviderOutput, error)
 	GetProviderManager() *providers.ProviderManager
+	GetBudgetManager() *BudgetManager
 }
 
 var logger = utils.SetUpLogger()
 
-func ConfigureRouterStrategy(routingData *types.RoutingData, providerManager *providers.ProviderManager, tracker *LatencyTracker) (Router, []string, error) {
+func ConfigureRouterStrategy(
+	routingData *types.RoutingData,
+	providerManager *providers.ProviderManager,
+	tracker *LatencyTracker,
+	budgets map[string]float64,
+) (Router, []string, error) {
 
 	var routerStrategy Router
 	var err error
 
+	budgetManager := NewBudgetManager(budgets, logger)
+
 	switch routingData.Strategy {
 	case "round-robin":
-		routerStrategy, err = NewRoundRobinRouter(providerManager)
+		routerStrategy, err = NewRoundRobinRouter(providerManager, budgetManager)
 		if err != nil {
 			logger.Error("Could not set up the round-robin router", zap.Error(err))
 			return nil, nil, err
 		}
 
 	case "cost-based":
-		routerStrategy, err = NewCostRouter(providerManager, routingData.CostOptions)
+		routerStrategy, err = NewCostRouter(providerManager, routingData.CostOptions, budgetManager)
 		if err != nil {
 			logger.Error("Could not set up the cost-based router", zap.Error(err))
 			return nil, nil, err
 		}
 
 	case "latency-based":
-		routerStrategy, err = NewLatencyRouter(providerManager, tracker)
+		routerStrategy, err = NewLatencyRouter(providerManager, tracker, budgetManager)
 		if err != nil {
 			logger.Error("Could not set up the latency-based router", zap.Error(err))
 			return nil, nil, err
 		}
 
 	case "weighted":
-		routerStrategy, err = NewWeightedRouter(providerManager, routingData.Weights)
+		routerStrategy, err = NewWeightedRouter(providerManager, routingData.Weights, budgetManager)
 		if err != nil {
 			logger.Error("Could not set up the weighted router", zap.Error(err))
 			return nil, nil, err
@@ -56,34 +64,34 @@ func ConfigureRouterStrategy(routingData *types.RoutingData, providerManager *pr
 		return nil, nil, fmt.Errorf("unsupported routing strategy: %s (supported: round-robin, cost-based, latency-based, weighted)", routingData.Strategy)
 	}
 
-	if routingData.Policies != nil {
-		pipeline := NewPipelineRouter(routerStrategy, providerManager)
+	pipeline := NewPipelineRouter(routerStrategy, providerManager, budgetManager)
 
-		if routingData.Policies.Semantic != nil && routingData.Policies.Semantic.Enabled {
-			var semanticFilter ProviderFilter
-			var filterErr error
+	if len(budgets) > 0 {
+		pipeline.AddFilter(filters.NewBudgetFilter(budgetManager, logger))
+		logger.Info("Enabled Budget Filter in Routing Pipeline")
+	}
 
-			if routingData.Policies.Semantic.Engine == "embedding" {
-				semanticFilter, filterErr = filters.NewEmbeddingFilter(routingData.Policies.Semantic)
-				if filterErr != nil {
-					logger.Error("Could not set up embedding filter, falling back to keywords", zap.Error(filterErr))
-					semanticFilter = filters.NewKeywordFilter(routingData.Policies.Semantic)
-				} else {
-					logger.Info("Enabled Semantic (Embedding) Filter in Routing Pipeline")
-				}
+	if routingData.Policies != nil && routingData.Policies.Semantic != nil && routingData.Policies.Semantic.Enabled {
+		var semanticFilter ProviderFilter
+		var filterErr error
+
+		if routingData.Policies.Semantic.Engine == "embedding" {
+			semanticFilter, filterErr = filters.NewEmbeddingFilter(routingData.Policies.Semantic, logger)
+			if filterErr != nil {
+				logger.Error("Could not set up embedding filter, falling back to keywords", zap.Error(filterErr))
+				semanticFilter = filters.NewKeywordFilter(routingData.Policies.Semantic, logger)
 			} else {
-				semanticFilter = filters.NewKeywordFilter(routingData.Policies.Semantic)
-				logger.Info("Enabled Semantic (Keyword) Filter in Routing Pipeline")
+				logger.Info("Enabled Semantic (Embedding) Filter in Routing Pipeline")
 			}
-
-			pipeline.AddFilter(semanticFilter)
+		} else {
+			semanticFilter = filters.NewKeywordFilter(routingData.Policies.Semantic, logger)
+			logger.Info("Enabled Semantic (Keyword) Filter in Routing Pipeline")
 		}
 
-		// If filters were added, use pipeline as the strategy.
-		// Even if no specific filter added (e.g. semantic disabled), wrapping in pipeline is harmless or we can skip.
-		// For now, let's wrap it to be safe if policies struct exists.
-		routerStrategy = pipeline
+		pipeline.AddFilter(semanticFilter)
 	}
+
+	routerStrategy = pipeline
 
 	return routerStrategy, routingData.Fallbacks, nil
 }

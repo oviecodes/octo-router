@@ -14,14 +14,16 @@ A production-ready, open-source LLM router built in Go. Route requests across mu
   - **Tier-Based Selection**: Control quality/cost trade-offs with tier constraints (budget, standard, premium, ultra-premium)
 - **Fallback Chain**: Automatic failover to backup providers when primary provider fails
 - **Provider-Specific Defaults**: Configure model and token limits per provider
-- **Input Validation**: Comprehensive request validation with detailed error messages
-- **Token Estimation**: Local token counting using tiktoken (no API calls)
-- **Cost Tracking**: Automatic per-request cost calculation with Prometheus metrics
+- **Semantic Routing**:
+  - **Keyword-Based**: Match intents using simple string patterns
+  - **AI-Powered (Embedding)**: Use local transformer models (MiniLM) for high-precision intent classification
+  - **Few-Shot Centroids**: Cluster-based matching with user-provided examples for robust detection
 - **Resilience**: Circuit breakers, retries with exponential backoff, and error translation
 - **Dynamic Provider Management**: Enable/disable providers without code changes
 - **Health Monitoring**: Built-in health check endpoint
-- **Structured Logging**: Production-ready logging with zap
+- **Structured Logging**: Production-ready logging with zap (including detailed semantic logs)
 - **Streaming Support**: Server-Sent Events for streaming responses
+- **Local Inference**: Zero-latency semantic classification using ONNX Runtime
 
 ## Supported Providers
 
@@ -37,10 +39,11 @@ See [Model Standardization](docs/MODEL_STANDARDIZATION.md) for complete pricing 
 
 ## Getting Started
 
-### Prerequisites
-
 - Go 1.21 or higher
 - API keys for desired providers
+- **ONNX Runtime**: `libonnxruntime` is required for embedding-based routing.
+  - **macOS**: `brew install onnxruntime`
+  - **Linux**: Download `libonnxruntime.so` from the [official releases](https://github.com/microsoft/onnxruntime/releases).
 
 ### Installation
 
@@ -303,6 +306,28 @@ Currently supported:
 - **Cost-based routing**: Pick the cheapest model for a request depending on the tier set in config.yaml
 - **Latency-based routing**: Dynamically routes to the fastest provider using Exponential Moving Average (EMA) tracking
 - **Weighted routing**: Routes traffic based on user-defined weights (e.g., A=80%, B=20%)
+
+### Semantic Routing (The "Bouncer")
+
+The Semantic Routing layer acts as a "Bouncer" for your requests, classifying user intent before selecting a provider. This ensures that coding tasks go to coding-optimized models, while simple chats use cheaper, faster providers.
+
+#### Engines
+- **Keyword Engine**: Simple, fast string matching using `intent_keywords`.
+- **Embedding Engine**: Uses a local **MiniLM-L6-v2** transformer model to calculate vector similarity.
+
+#### Key Features
+- **Few-Shot Centroids**: Provide several `examples` for an intent to create a robust "cluster" in vector space. 
+- **System Defaults**: Use `extend_default: true` to load pre-tuned intent examples for common tasks like `coding` and `fast-chat`.
+- **Capability Discovery**: Automatically route to any provider that supports a required `capability` (e.g., `coding`).
+
+#### Example Configuration
+```yaml
+routing:
+  policies:
+    semantic:
+      enabled: true
+      # ... (see docs/SEMANTIC_ROUTING.md for details)
+```
 
 Planned:
 

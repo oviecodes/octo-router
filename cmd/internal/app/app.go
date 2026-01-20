@@ -102,7 +102,14 @@ func initializeRouter(cfg *config.Config, providerManager *providers.ProviderMan
 
 	logger.Info("Initializing router", zap.String("strategy", routerStrategy.Strategy))
 
-	llmRouter, fallback, err := router.ConfigureRouterStrategy(routerStrategy, providerManager, tracker)
+	budgets := make(map[string]float64)
+	for name, limits := range cfg.Limits.Providers {
+		if limits.Budget > 0 {
+			budgets[name] = limits.Budget
+		}
+	}
+
+	llmRouter, fallback, err := router.ConfigureRouterStrategy(routerStrategy, providerManager, tracker, budgets)
 
 	return llmRouter, fallback, err
 }

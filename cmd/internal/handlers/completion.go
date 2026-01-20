@@ -181,6 +181,10 @@ func handleCompletionWithModelChain(
 			zap.Int("attempt_number", i+1),
 		)
 
+		if budgetManager := resolver.GetRouter().GetBudgetManager(); budgetManager != nil {
+			budgetManager.TrackUsage(currentProviderName, response.CostUSD)
+		}
+
 		c.Header("X-Request-Cost", response.Headers["cost"])
 
 		c.JSON(http.StatusOK, gin.H{
@@ -188,6 +192,8 @@ func handleCompletionWithModelChain(
 			"role":     response.Message.Role,
 			"provider": currentProviderName,
 			"model":    currentModel,
+			"usage":    response.Usage,
+			"cost_usd": response.CostUSD,
 		})
 		return
 	}
@@ -259,12 +265,18 @@ func handleCompletionWithProviderChain(
 			zap.Int("attempt_number", i+1),
 		)
 
+		if budgetManager := resolver.GetRouter().GetBudgetManager(); budgetManager != nil {
+			budgetManager.TrackUsage(currentProviderName, response.CostUSD)
+		}
+
 		c.Header("X-Request-Cost", response.Headers["cost"])
 
 		c.JSON(http.StatusOK, gin.H{
 			"message":  response.Message.Content,
 			"role":     response.Message.Role,
 			"provider": currentProviderName,
+			"usage":    response.Usage,
+			"cost_usd": response.CostUSD,
 		})
 		return
 	}

@@ -12,8 +12,13 @@ import (
 
 type RoundRobinRouter struct {
 	providerManager *providers.ProviderManager
+	budgetManager   *BudgetManager
 	mu              sync.Mutex
 	current         int
+}
+
+func (r *RoundRobinRouter) GetBudgetManager() *BudgetManager {
+	return r.budgetManager
 }
 
 func (r *RoundRobinRouter) SelectProvider(ctx context.Context, deps *types.SelectProviderInput) (*types.SelectedProviderOutput, error) {
@@ -48,7 +53,7 @@ func (r *RoundRobinRouter) SelectProvider(ctx context.Context, deps *types.Selec
 	return nil, fmt.Errorf("no healthy providers available")
 }
 
-func NewRoundRobinRouter(providerManager *providers.ProviderManager) (*RoundRobinRouter, error) {
+func NewRoundRobinRouter(providerManager *providers.ProviderManager, budget *BudgetManager) (*RoundRobinRouter, error) {
 	if providerManager == nil {
 		return nil, fmt.Errorf("provider manager cannot be nil")
 	}
@@ -65,6 +70,7 @@ func NewRoundRobinRouter(providerManager *providers.ProviderManager) (*RoundRobi
 	return &RoundRobinRouter{
 		current:         0,
 		providerManager: providerManager,
+		budgetManager:   budget,
 	}, nil
 }
 

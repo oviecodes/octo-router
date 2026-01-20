@@ -8,40 +8,48 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/sugarme/tokenizer"
 	"github.com/sugarme/tokenizer/pretrained"
 	ort "github.com/yalue/onnxruntime_go"
+	"go.uber.org/zap"
 )
 
+// Constants for the MiniLM-L6-v2 model
 const (
-	MaxSeqLength = 128
-	EmbeddingDim = 384
+	MaxSeqLength = 128 // Transformer input limit
+	EmbeddingDim = 384 // MiniLM output vector size
 )
 
+// EmbeddingFilter implements the ProviderFilter interface using local vector similarity.
+// It converts user prompts into mathematical vectors (embeddings) and compares them
+// against pre-calculated "intent clusters" to determine the most relevant routing.
 type EmbeddingFilter struct {
 	policy           *types.SemanticPolicy
 	tokenizer        *tokenizer.Tokenizer
 	session          *ort.AdvancedSession
 	intentEmbeddings map[string][]float32
 	mu               sync.Mutex
+	logger           *zap.Logger
 
-	// Pre-allocated buffers for inference
+	// Pre-allocated buffers for inference (optimized for performance)
 	inputIds      []int64
 	attentionMask []int64
 	tokenTypeIds  []int64
 	outputData    []float32
 }
 
-func NewEmbeddingFilter(policy *types.SemanticPolicy) (*EmbeddingFilter, error) {
-	// 1. Initialize ONNX runtime if not already done
+// NewEmbeddingFilter creates and initializes a new EmbeddingFilter.
+// It handles ONNX Runtime environment setup and model loading.
+func NewEmbeddingFilter(policy *types.SemanticPolicy, logger *zap.Logger) (*EmbeddingFilter, error) {
+	// 1. Initialize ONNX runtime environment
 	if !ort.IsInitialized() {
-		// Set shared library path if needed (e.g. for macOS Homebrew)
-		if _, err := os.Stat("/opt/homebrew/lib/libonnxruntime.dylib"); err == nil {
-			ort.SetSharedLibraryPath("/opt/homebrew/lib/libonnxruntime.dylib")
+		libPath := resolveLibPath(policy.SharedLibPath, logger)
+		if libPath != "" {
+			ort.SetSharedLibraryPath(libPath)
 		}
+
 		err := ort.InitializeEnvironment()
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize onnxruntime: %w", err)
@@ -55,6 +63,7 @@ func NewEmbeddingFilter(policy *types.SemanticPolicy) (*EmbeddingFilter, error) 
 		attentionMask:    make([]int64, MaxSeqLength),
 		tokenTypeIds:     make([]int64, MaxSeqLength),
 		outputData:       make([]float32, MaxSeqLength*EmbeddingDim),
+		logger:           logger,
 	}
 
 	err := f.loadModel(policy.ModelPath)
@@ -65,15 +74,56 @@ func NewEmbeddingFilter(policy *types.SemanticPolicy) (*EmbeddingFilter, error) 
 	return f, nil
 }
 
+// resolveLibPath finds the best ONNX shared library path based on priority:
+// 1. Environment variable (ONNXRUNTIME_LIB_PATH)
+// 2. Configuration file (shared_lib_path)
+// 3. Known system locations (e.g. Homebrew)
+func resolveLibPath(configPath string, logger *zap.Logger) string {
+	// 1. Try Env Var
+	if env := os.Getenv("ONNXRUNTIME_LIB_PATH"); env != "" {
+		if logger != nil {
+			logger.Debug("Using ONNX library from environment variable", zap.String("path", env))
+		}
+		return env
+	}
+
+	// 2. Try Config
+	if configPath != "" {
+		if _, err := os.Stat(configPath); err == nil {
+			if logger != nil {
+				logger.Debug("Using ONNX library from config", zap.String("path", configPath))
+			}
+			return configPath
+		}
+	}
+
+	// 3. Known System Paths (macOS/Linux)
+	defaults := []string{
+		"/usr/local/lib/libonnxruntime.dylib",
+		"/opt/homebrew/lib/libonnxruntime.dylib",
+		"/usr/lib/libonnxruntime.so",
+	}
+	for _, p := range defaults {
+		if _, err := os.Stat(p); err == nil {
+			if logger != nil {
+				logger.Debug("Using ONNX library from default path", zap.String("path", p))
+			}
+			return p
+		}
+	}
+
+	return ""
+}
+
 func (f *EmbeddingFilter) Name() string {
 	return "embedding"
 }
 
+// loadModel prepares the tokenizer and ONNX inference session.
 func (f *EmbeddingFilter) loadModel(path string) error {
-	// Try to find the file if the path is relative and doesn't exist directly
+	// Resolve relative model path
 	finalPath := path
 	if _, err := os.Stat(finalPath); os.IsNotExist(err) && !filepath.IsAbs(finalPath) {
-		// Try project root from cmd/server or cmd/internal...
 		tryPaths := []string{
 			filepath.Join("..", "..", path),
 			filepath.Join("..", path),
@@ -86,34 +136,21 @@ func (f *EmbeddingFilter) loadModel(path string) error {
 		}
 	}
 
-	// 1. Load Tokenizer
+	// 1. Load Tokenizer (custom tokenizer.json if present, else fallback)
 	tk := tokenizer.NewTokenizerFromFile(filepath.Join(filepath.Dir(finalPath), "tokenizer.json"))
 	if tk == nil {
-		// Fallback to Bert if custom tokenizer missing
 		f.tokenizer = pretrained.BertBaseUncased()
 	} else {
 		f.tokenizer = tk
 	}
 
-	// 2. Create Tensors
+	// 2. Bind Tensors to Buffers
 	shape := ort.NewShape(1, MaxSeqLength)
-	inputIdsTensor, err := ort.NewTensor(shape, f.inputIds)
-	if err != nil {
-		return err
-	}
-	maskTensor, err := ort.NewTensor(shape, f.attentionMask)
-	if err != nil {
-		return err
-	}
-	typeIdsTensor, err := ort.NewTensor(shape, f.tokenTypeIds)
-	if err != nil {
-		return err
-	}
+	inputIdsTensor, _ := ort.NewTensor(shape, f.inputIds)
+	maskTensor, _ := ort.NewTensor(shape, f.attentionMask)
+	typeIdsTensor, _ := ort.NewTensor(shape, f.tokenTypeIds)
 	outputShape := ort.NewShape(1, MaxSeqLength, EmbeddingDim)
-	outputTensor, err := ort.NewTensor(outputShape, f.outputData)
-	if err != nil {
-		return err
-	}
+	outputTensor, _ := ort.NewTensor(outputShape, f.outputData)
 
 	// 3. Create Session
 	session, err := ort.NewAdvancedSession(finalPath,
@@ -127,45 +164,72 @@ func (f *EmbeddingFilter) loadModel(path string) error {
 	}
 	f.session = session
 
-	// 4. Pre-calculate Intent Embeddings (Few-Shot Centroids)
-	for _, group := range f.policy.Groups {
+	// 4. Pre-calculate Intent Centroids (Averaged Few-Shot Vectors)
+	f.initializeIntentClusters()
+
+	return nil
+}
+
+func (f *EmbeddingFilter) initializeIntentClusters() {
+	// Merge user groups with system defaults if enabled
+	allGroups := f.policy.Groups
+	if f.policy.ExtendDefault {
+		defaults := GetSystemDefaultGroups()
+		// For each default group, either merge with user group or add new
+		for _, dg := range defaults {
+			found := false
+			for i, ug := range allGroups {
+				if ug.Name == dg.Name && ug.UseSystemDefault {
+					allGroups[i].Examples = append(allGroups[i].Examples, dg.Examples...)
+					found = true
+					break
+				}
+			}
+			if !found {
+				// Don't add default groups unless specifically relevant or user didn't provide alternatives
+				// For now, let's keep it simple: just merge if the name matches
+			}
+		}
+	}
+
+	for _, group := range allGroups {
 		texts := make([]string, 0)
 		if group.IntentDescription != "" {
 			texts = append(texts, group.IntentDescription)
 		}
 		texts = append(texts, group.Examples...)
 
-		if len(texts) == 0 && len(group.IntentKeywords) > 0 {
-			texts = append(texts, strings.Join(group.IntentKeywords, " "))
-		}
-
 		if len(texts) > 0 {
 			centroid := make([]float32, EmbeddingDim)
+			validSampleCount := 0
 			for _, t := range texts {
 				emb, err := f.calculateEmbedding(context.Background(), t)
 				if err != nil {
-					return fmt.Errorf("failed to calculate embedding for text %q in group %s: %w", t, group.Name, err)
+					continue
 				}
 				for d := 0; d < EmbeddingDim; d++ {
 					centroid[d] += emb[d]
 				}
+				validSampleCount++
 			}
-			// Average
-			for d := 0; d < EmbeddingDim; d++ {
-				centroid[d] /= float32(len(texts))
+			// Average to get the cluster center
+			if validSampleCount > 0 {
+				for d := 0; d < EmbeddingDim; d++ {
+					centroid[d] /= float32(validSampleCount)
+				}
+				f.intentEmbeddings[group.Name] = centroid
+				f.logger.Info("Initialized intent cluster", zap.String("group", group.Name), zap.Int("samples", validSampleCount))
 			}
-			f.intentEmbeddings[group.Name] = centroid
 		}
 	}
-
-	return nil
 }
 
+// calculateEmbedding processes a string through the neural network.
 func (f *EmbeddingFilter) calculateEmbedding(ctx context.Context, text string) ([]float32, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	// 1. Tokenize
+	// 1. Tokenization: Break text into sub-words (WordPiece)
 	en, err := f.tokenizer.EncodeSingle(text, true)
 	if err != nil {
 		return nil, err
@@ -175,42 +239,43 @@ func (f *EmbeddingFilter) calculateEmbedding(ctx context.Context, text string) (
 	mask := en.GetAttentionMask()
 	typeIds := en.GetTypeIds()
 
-	// CRITICAL: Ensure [CLS] (101) and [SEP] (102) are present
+	// Ensure BERT special tokens are present ([CLS] at 0, [SEP] at end)
 	if len(ids) > 0 && ids[0] != 101 {
-		newIds := make([]int, 0, len(ids)+2)
-		newIds = append(newIds, 101)
+		newIds := []int{101}
 		newIds = append(newIds, ids...)
 		if newIds[len(newIds)-1] != 102 {
 			newIds = append(newIds, 102)
 		}
 		ids = newIds
+		// Resync mask
 		mask = make([]int, len(ids))
-		typeIds = make([]int, len(ids))
 		for i := range mask {
 			mask[i] = 1
 		}
+		typeIds = make([]int, len(ids))
 	}
 
-	// 2. Prepare Inputs (with padding)
+	// 2. Data Preparation: Fill ONNX buffers with padding
 	for i := 0; i < MaxSeqLength; i++ {
 		if i < len(ids) {
 			f.inputIds[i] = int64(ids[i])
 			f.attentionMask[i] = int64(mask[i])
 			f.tokenTypeIds[i] = int64(typeIds[i])
 		} else {
-			f.inputIds[i] = 0
+			f.inputIds[i] = 0 // [PAD] id
 			f.attentionMask[i] = 0
 			f.tokenTypeIds[i] = 0
 		}
 	}
 
-	// 3. Run Inference
+	// 3. Inference: Run the Transformer model
 	err = f.session.Run()
 	if err != nil {
 		return nil, err
 	}
 
-	// 4. Mean Pooling (Modified: Re-include structural tokens for better alignment)
+	// 4. Mean Pooling: Average the vectors of all tokens in the sentence
+	// This reduces a matrix (Words x Dimensions) into a single vector (Dimensions).
 	embedding := make([]float32, EmbeddingDim)
 	var validTokens float32
 
@@ -229,67 +294,111 @@ func (f *EmbeddingFilter) calculateEmbedding(ctx context.Context, text string) (
 		}
 	}
 
+	// Calculate magnitude for debug
+	var mag float64
+	for _, v := range embedding {
+		mag += float64(v) * float64(v)
+	}
+	magnitude := math.Sqrt(mag)
+
+	f.logger.Debug("Point embedding calculated",
+		zap.String("text", text),
+		zap.Int("tokens", len(ids)),
+		zap.Float64("magnitude", magnitude),
+	)
+
 	return embedding, nil
 }
 
-func (f *EmbeddingFilter) Filter(ctx context.Context, candidates []types.Provider, input *types.SelectProviderInput) ([]types.Provider, error) {
+// Filter compares the prompt's vector against each intent's centroid vector.
+func (f *EmbeddingFilter) Filter(ctx context.Context, input *types.FilterInput) (*types.FilterOutput, error) {
+	candidates := input.Candidates
 	if len(input.Messages) == 0 {
-		return candidates, nil
+		return &types.FilterOutput{Candidates: candidates}, nil
 	}
 
-	// 1. Get Prompt Embedding
+	// 1. Vectorize the prompt
 	lastMsg := input.Messages[len(input.Messages)-1].Content
 	promptEmb, err := f.calculateEmbedding(ctx, lastMsg)
 	if err != nil {
-		return candidates, err
+		return &types.FilterOutput{Candidates: candidates}, err
 	}
 
-	// 2. Find Best Match
+	// 2. Find closest intent cluster (Cosine Similarity)
 	bestGroup := f.policy.DefaultGroup
 	maxSim := -1.0
 
 	for name, intentEmb := range f.intentEmbeddings {
 		sim := cosineSimilarity(promptEmb, intentEmb)
-		fmt.Printf("[Semantic Debug] Group: %s, Score: %.4f\n", name, sim)
+		f.logger.Debug("Semantic Group Score",
+			zap.String("group", name),
+			zap.Float64("score", sim),
+		)
 		if sim > maxSim {
 			maxSim = sim
 			bestGroup = name
 		}
 	}
 
+	// 3. Apply Decision Threshold
 	threshold := f.policy.Threshold
 	if threshold == 0 {
 		threshold = 0.5
 	}
 
 	if maxSim < threshold {
-		fmt.Printf("[Semantic] Max similarity %.4f below threshold %.4f, using default: %s\n", maxSim, threshold, f.policy.DefaultGroup)
+		f.logger.Info("Semantic similarity below threshold, using default group",
+			zap.Float64("max_sim", maxSim),
+			zap.Float64("threshold", threshold),
+			zap.String("default_group", f.policy.DefaultGroup),
+		)
 		bestGroup = f.policy.DefaultGroup
 	} else {
-		fmt.Printf("[Semantic] Matched intent: %s (score: %.4f)\n", bestGroup, maxSim)
+		f.logger.Info("Semantic match found",
+			zap.String("intent", bestGroup),
+			zap.Float64("score", maxSim),
+		)
 	}
 
-	// 3. Discovery Logic (Hybrid)
+	// 4. Transform Decision into Candidate Pool
+	filtered, err := f.resolveCandidates(bestGroup, candidates)
+	return &types.FilterOutput{Candidates: filtered}, err
+}
+
+func (f *EmbeddingFilter) resolveCandidates(groupName string, candidates []types.Provider) ([]types.Provider, error) {
 	var allowList []string
 	var reqCapability string
 
+	// Find the matching group configuration
 	for _, group := range f.policy.Groups {
-		if group.Name == bestGroup {
+		if group.Name == groupName {
 			allowList = group.AllowProviders
 			reqCapability = group.RequiredCapability
 			break
 		}
 	}
 
+	// If no group config found but we have defaults, try system defaults
+	if len(allowList) == 0 && reqCapability == "" && f.policy.ExtendDefault {
+		for _, dg := range GetSystemDefaultGroups() {
+			if dg.Name == groupName {
+				allowList = dg.AllowProviders
+				reqCapability = dg.RequiredCapability
+				break
+			}
+		}
+	}
+
+	// Capability discovery if no explicit provider list
 	if len(allowList) == 0 && reqCapability != "" {
 		allowList = providers.ListProvidersByCapability(reqCapability)
 	}
 
-	// 4. Apply Filter
 	if len(allowList) == 0 {
 		return candidates, nil
 	}
 
+	// Final Filtering
 	filtered := make([]types.Provider, 0)
 	allowedMap := make(map[string]bool)
 	for _, p := range allowList {
@@ -309,6 +418,8 @@ func (f *EmbeddingFilter) Filter(ctx context.Context, candidates []types.Provide
 	return filtered, nil
 }
 
+// cosineSimilarity measures how "aligned" two vectors are.
+// Scores range from -1.0 (opposite) to 1.0 (identical).
 func cosineSimilarity(a, b []float32) float64 {
 	var dot, normA, normB float64
 	for i := range a {

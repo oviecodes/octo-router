@@ -37,7 +37,8 @@ type LimitsData struct {
 }
 
 type ProviderLimits struct {
-	RequestsPerMinute int `mapstructure:"requestsPerMinute"`
+	RequestsPerMinute int     `mapstructure:"requestsPerMinute"`
+	Budget            float64 `mapstructure:"budget"`
 }
 
 type CacheData struct {

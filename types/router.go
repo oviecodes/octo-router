@@ -13,15 +13,18 @@ type SemanticGroup struct {
 	Examples           []string `mapstructure:"examples"` // Few-shot examples for better matching
 	AllowProviders     []string `mapstructure:"allow_providers"`
 	RequiredCapability string   `mapstructure:"required_capability"`
+	UseSystemDefault   bool     `mapstructure:"use_system_default"` // If true, merges with built-in intent examples
 }
 
 type SemanticPolicy struct {
-	Enabled      bool            `mapstructure:"enabled"`
-	Engine       string          `mapstructure:"engine"` // "keyword", "embedding"
-	Threshold    float64         `mapstructure:"threshold"`
-	ModelPath    string          `mapstructure:"model_path"`
-	DefaultGroup string          `mapstructure:"default_group"`
-	Groups       []SemanticGroup `mapstructure:"groups"`
+	Enabled       bool            `mapstructure:"enabled"`
+	Engine        string          `mapstructure:"engine"` // "keyword", "embedding"
+	Threshold     float64         `mapstructure:"threshold"`
+	ModelPath     string          `mapstructure:"model_path"`
+	SharedLibPath string          `mapstructure:"shared_lib_path"` // Path to libonnxruntime.dylib/so
+	DefaultGroup  string          `mapstructure:"default_group"`
+	ExtendDefault bool            `mapstructure:"extend_default"` // If true, includes system-defined intents
+	Groups        []SemanticGroup `mapstructure:"groups"`
 }
 
 type Policies struct {
@@ -52,4 +55,14 @@ type SelectedProviderOutput struct {
 	Provider   Provider
 	Model      string
 	Candidates []Provider // The filtered pool of candidates
+}
+
+type FilterInput struct {
+	Candidates []Provider
+	Messages   []Message
+	Tier       string
+}
+
+type FilterOutput struct {
+	Candidates []Provider
 }

@@ -32,27 +32,20 @@ routing:
     semantic:
       enabled: true
       engine: "embedding"  # Engines: "keyword" or "embedding"
-      threshold: 0.45      # Calibrated for MiniLM centroids
+      threshold: 0.45      
       model_path: "assets/models/embedding.onnx"
+      shared_lib_path: "/opt/homebrew/lib/libonnxruntime.dylib" # Optional: Explicit path
       default_group: "general"
+      extend_default: true # Enable system-default intents (coding, fast-chat)
       groups:
         - name: "coding"
-          intent_description: "General software development and programming tasks."
-          examples:
-            - "write a binary search algorithm in python"
-            - "how do I fix a null pointer exception in java?"
-            - "refactor this function to be more efficient"
-            - "write a unit test for this go struct"
-            - "implement a linked list in c++"
+          use_system_default: true # Inherit examples from system defaults
           required_capability: "coding" 
         - name: "fast-chat"
-          intent_description: "Simple conversational interactions and basic knowledge."
+          intent_description: "Simple conversational interactions and basic knowledge." # use intent_keyword for keyword engine
           examples:
             - "hello! how is your day going?"
             - "tell me a joke about robots"
-            - "what is the capital of france?"
-            - "how cold is it in london today?"
-            - "who won the world cup in 2022?"
           allow_providers: ["gemini"]
 
   # Fallback chain
@@ -60,21 +53,6 @@ routing:
     - openai
     - anthropic
     - gemini
-
-  # strategy: "intelligent"
-  
-  # rules:
-  #   # Route based on prompt characteristics
-  #   - condition: tokens > 10000
-  #     provider: "anthropic"  # Claude is better at long context
-    
-  #   - condition: prompt.contains("code")
-  #     provider: "openai"
-  #     model: "openai/gpt-4o"
-
-  #   - condition: priority == "low"
-  #     provider: "gemini"
-  #     model: "gemini/gemini-2.5-flash-lite"  # Cheapest option
 
 models:
   defaults:
@@ -154,8 +132,13 @@ limits:
   providers:
     openai:
       requestsPerMinute: 60
+      budget: 10.00
     anthropic:
       requestsPerMinute: 50
+      budget: 5.50
+    gemini:
+      requestsPerMinute: 100
+      budget: 1.00
 
 resilience:
   timeout: 30000  # 30 second timeout

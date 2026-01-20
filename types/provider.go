@@ -16,9 +16,17 @@ type CompletionInput struct {
 	Messages []Message
 }
 
+type Usage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
+}
+
 type CompletionResponse struct {
-	Message Message
-	Headers map[string]string
+	Message Message           `json:"message"`
+	Usage   Usage             `json:"usage"`
+	CostUSD float64           `json:"cost_usd"`
+	Headers map[string]string `json:"-"`
 }
 
 type ProviderConfig struct {

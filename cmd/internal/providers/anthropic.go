@@ -8,7 +8,6 @@ import (
 	providererrors "llm-router/cmd/internal/provider_errors"
 	"llm-router/types"
 	"llm-router/utils"
-	"strconv"
 	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
@@ -113,26 +112,26 @@ func (a *AnthropicProvider) Complete(ctx context.Context, input *types.Completio
 	response := a.convertToRouterMessage(message)
 	return &types.CompletionResponse{
 		Message: *response,
-		Headers: map[string]string{
-			"cost": strconv.FormatFloat(cost, 'f', -1, 64),
+		Usage: types.Usage{
+			PromptTokens:     inputTokens,
+			CompletionTokens: outputTokens,
+			TotalTokens:      inputTokens + outputTokens,
 		},
+		CostUSD: cost,
 	}, nil
 }
 
 func (a *AnthropicProvider) CompleteStream(ctx context.Context, input *types.StreamCompletionInput) (<-chan *types.StreamChunk, error) {
-	// Create timeout context but don't defer cancel yet - it will be called in the goroutine
 	ctx, cancel := context.WithTimeout(ctx, a.timeout)
 
 	modelToUse := a.model
-	// standardModelID := a.standardModelID
 	if input.Model != "" {
 		sdkModel, err := MapToAnthropicModel(input.Model)
 		if err != nil {
-			cancel() // Clean up context on error
+			cancel()
 			return nil, fmt.Errorf("invalid anthropic model: %w", err)
 		}
 		modelToUse = sdkModel
-		// standardModelID = input.Model
 	}
 
 	anthropicMessages := a.convertMessages(input.Messages)
@@ -146,7 +145,7 @@ func (a *AnthropicProvider) CompleteStream(ctx context.Context, input *types.Str
 	chunks := make(chan *types.StreamChunk)
 	message := anthropic.Message{}
 	go func() {
-		defer cancel() // Cancel context when streaming is done
+		defer cancel()
 		defer close(chunks)
 
 		for stream.Next() {

@@ -76,7 +76,7 @@ func TestSemanticPipeline_KeywordFilter(t *testing.T) {
 		},
 	}
 
-	r, _, err := router.ConfigureRouterStrategy(routingData, manager, nil)
+	r, _, err := router.ConfigureRouterStrategy(routingData, manager, nil, nil)
 	if err != nil {
 		t.Fatalf("Failed to configure router: %v", err)
 	}
