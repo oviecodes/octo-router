@@ -11,10 +11,10 @@ import (
 type LatencyRouter struct {
 	providerManager *providers.ProviderManager
 	tracker         *LatencyTracker
-	budgetManager   *BudgetManager
+	budgetManager   BudgetManager
 }
 
-func NewLatencyRouter(providerManager *providers.ProviderManager, tracker *LatencyTracker, budget *BudgetManager) (*LatencyRouter, error) {
+func NewLatencyRouter(providerManager *providers.ProviderManager, tracker *LatencyTracker, budget BudgetManager) (*LatencyRouter, error) {
 	return &LatencyRouter{
 		providerManager: providerManager,
 		tracker:         tracker,
@@ -22,7 +22,7 @@ func NewLatencyRouter(providerManager *providers.ProviderManager, tracker *Laten
 	}, nil
 }
 
-func (r *LatencyRouter) GetBudgetManager() *BudgetManager {
+func (r *LatencyRouter) GetBudgetManager() BudgetManager {
 	return r.budgetManager
 }
 

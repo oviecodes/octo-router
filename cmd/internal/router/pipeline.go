@@ -16,10 +16,10 @@ type PipelineRouter struct {
 	baseRouter      Router
 	filters         []ProviderFilter
 	providerManager *providers.ProviderManager
-	budgetManager   *BudgetManager
+	budgetManager   BudgetManager
 }
 
-func NewPipelineRouter(baseRouter Router, manager *providers.ProviderManager, budget *BudgetManager) *PipelineRouter {
+func NewPipelineRouter(baseRouter Router, manager *providers.ProviderManager, budget BudgetManager) *PipelineRouter {
 	return &PipelineRouter{
 		baseRouter:      baseRouter,
 		filters:         make([]ProviderFilter, 0),
@@ -28,7 +28,7 @@ func NewPipelineRouter(baseRouter Router, manager *providers.ProviderManager, bu
 	}
 }
 
-func (r *PipelineRouter) GetBudgetManager() *BudgetManager {
+func (r *PipelineRouter) GetBudgetManager() BudgetManager {
 	return r.budgetManager
 }
 

@@ -71,7 +71,7 @@ func SetUpApp() *App {
 	var cacheInstance cache.Cache
 
 	if cfg.CacheConfig.Enabled {
-		cacheInstance, err = cache.NewCacheClient(cfg.CacheConfig)
+		cacheInstance, err = cache.NewCacheClient(cfg.CacheConfig, cfg.Redis)
 
 		if err != nil {
 			logger.Error("Failed to initialize cache", zap.Error(err))
@@ -102,6 +102,7 @@ func initializeRouter(cfg *config.Config, providerManager *providers.ProviderMan
 
 	logger.Info("Initializing router", zap.String("strategy", routerStrategy.Strategy))
 
+	// Extract provider budgets from Limits configuration
 	budgets := make(map[string]float64)
 	for name, limits := range cfg.Limits.Providers {
 		if limits.Budget > 0 {
@@ -109,7 +110,17 @@ func initializeRouter(cfg *config.Config, providerManager *providers.ProviderMan
 		}
 	}
 
-	llmRouter, fallback, err := router.ConfigureRouterStrategy(routerStrategy, providerManager, tracker, budgets)
+	var budgetManager router.BudgetManager
+	if cfg.Redis.Addr != "" {
+		redisClient := cache.NewRedisClient(cfg.Redis)
+		budgetManager = router.NewRedisBudgetManager(redisClient, budgets, logger)
+		logger.Info("Using Redis for budget tracking", zap.String("addr", cfg.Redis.Addr))
+	} else {
+		budgetManager = router.NewInMemoryBudgetManager(budgets, logger)
+		logger.Info("Using in-memory budget tracking")
+	}
+
+	llmRouter, fallback, err := router.ConfigureRouterStrategy(routerStrategy, providerManager, tracker, budgetManager)
 
 	return llmRouter, fallback, err
 }

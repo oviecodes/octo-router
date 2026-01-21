@@ -14,15 +14,15 @@ import (
 type CostRouter struct {
 	providerManager *providers.ProviderManager
 	costOptions     *types.CostOptions
-	budgetManager   *BudgetManager
+	budgetManager   BudgetManager
 	mu              sync.RWMutex
 }
 
-func (c *CostRouter) GetBudgetManager() *BudgetManager {
+func (c *CostRouter) GetBudgetManager() BudgetManager {
 	return c.budgetManager
 }
 
-func NewCostRouter(providerManager *providers.ProviderManager, costOptions *types.CostOptions, budget *BudgetManager) (*CostRouter, error) {
+func NewCostRouter(providerManager *providers.ProviderManager, costOptions *types.CostOptions, budget BudgetManager) (*CostRouter, error) {
 	if providerManager == nil {
 		return nil, fmt.Errorf("provider manager cannot be nil")
 	}

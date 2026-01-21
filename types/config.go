@@ -46,3 +46,9 @@ type CacheData struct {
 	Ttl      int               `mapstructure:"ttl"`
 	Semantic map[string]string `mapstructure:"semantic"`
 }
+
+type RedisData struct {
+	Addr     string `mapstructure:"addr"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
+}

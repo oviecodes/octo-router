@@ -14,7 +14,7 @@ import (
 type Router interface {
 	SelectProvider(ctx context.Context, deps *types.SelectProviderInput) (*types.SelectedProviderOutput, error)
 	GetProviderManager() *providers.ProviderManager
-	GetBudgetManager() *BudgetManager
+	GetBudgetManager() BudgetManager
 }
 
 var logger = utils.SetUpLogger()
@@ -23,13 +23,11 @@ func ConfigureRouterStrategy(
 	routingData *types.RoutingData,
 	providerManager *providers.ProviderManager,
 	tracker *LatencyTracker,
-	budgets map[string]float64,
+	budgetManager BudgetManager,
 ) (Router, []string, error) {
 
 	var routerStrategy Router
 	var err error
-
-	budgetManager := NewBudgetManager(budgets, logger)
 
 	switch routingData.Strategy {
 	case "round-robin":
@@ -66,7 +64,7 @@ func ConfigureRouterStrategy(
 
 	pipeline := NewPipelineRouter(routerStrategy, providerManager, budgetManager)
 
-	if len(budgets) > 0 {
+	if budgetManager != nil {
 		pipeline.AddFilter(filters.NewBudgetFilter(budgetManager, logger))
 		logger.Info("Enabled Budget Filter in Routing Pipeline")
 	}

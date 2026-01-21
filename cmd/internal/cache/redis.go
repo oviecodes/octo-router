@@ -38,16 +38,20 @@ func (s *SemanticCache) GetItem() {}
 
 func (s *SemanticCache) SetItem() {}
 
-func NewCacheClient(config types.CacheData) (Cache, error) {
-
-	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
+func NewRedisClient(config types.RedisData) *redis.Client {
+	return redis.NewClient(&redis.Options{
+		Addr:     config.Addr,
+		Password: config.Password,
+		DB:       config.DB,
 	})
+}
 
-	semanticEnabled := config.Semantic["enabled"]
-	similarityThreshold := config.Semantic["similaritythreshold"]
+func NewCacheClient(cfg types.CacheData, redisConfig types.RedisData) (Cache, error) {
+
+	client := NewRedisClient(redisConfig)
+
+	semanticEnabled := cfg.Semantic["enabled"]
+	similarityThreshold := cfg.Semantic["similaritythreshold"]
 
 	derivedSimilarityThreshold, _ := strconv.ParseFloat(similarityThreshold, 64)
 
@@ -57,7 +61,7 @@ func NewCacheClient(config types.CacheData) (Cache, error) {
 			config: cacheConfig{
 				strategy:            "semantic",
 				similarityThreshold: derivedSimilarityThreshold,
-				ttl:                 config.Ttl,
+				ttl:                 cfg.Ttl,
 			},
 		}, nil
 	}
@@ -67,7 +71,7 @@ func NewCacheClient(config types.CacheData) (Cache, error) {
 		config: cacheConfig{
 			strategy:            "default",
 			similarityThreshold: derivedSimilarityThreshold,
-			ttl:                 config.Ttl,
+			ttl:                 cfg.Ttl,
 		},
 	}, nil
 }

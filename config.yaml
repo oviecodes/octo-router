@@ -114,10 +114,16 @@ cache:
   # What to cache
   rules:
     - cache: true
+      maxSize: 1024  # Max tokens to cache
+    - cache: true
       if: request.temperature == 0  # Deterministic requests
-    
     - cache: false
       if: request.user == "premium"
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
 
 limits:
   # Per-user rate limits
@@ -132,10 +138,10 @@ limits:
   providers:
     openai:
       requestsPerMinute: 60
-      budget: 10.00
+      budget: 0.00001
     anthropic:
       requestsPerMinute: 50
-      budget: 5.50
+      budget: 0.0000705
     gemini:
       requestsPerMinute: 100
       budget: 1.00
