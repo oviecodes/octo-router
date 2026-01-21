@@ -10,6 +10,7 @@ import (
 	"llm-router/utils"
 	"os"
 
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -62,7 +63,13 @@ func SetUpApp() *App {
 	providerManager := providers.NewProviderManager(providerFactory)
 	providerManager.SetProviders(wrappedProviders)
 
-	llmRouter, fallback, err := initializeRouter(cfg, providerManager, latencyTracker)
+	var redisClient *redis.Client
+	if cfg.Redis.Addr != "" {
+		redisClient = cache.NewRedisClient(cfg.Redis)
+		logger.Info("Using Redis", zap.String("addr", cfg.Redis.Addr))
+	}
+
+	llmRouter, fallback, err := initializeRouter(cfg, providerManager, latencyTracker, redisClient)
 	if err != nil {
 		logger.Error("Failed to initialize router", zap.Error(err))
 		os.Exit(1)
@@ -71,7 +78,7 @@ func SetUpApp() *App {
 	var cacheInstance cache.Cache
 
 	if cfg.CacheConfig.Enabled {
-		cacheInstance, err = cache.NewCacheClient(cfg.CacheConfig, cfg.Redis)
+		cacheInstance, err = cache.NewCacheClient(cfg.CacheConfig, redisClient)
 
 		if err != nil {
 			logger.Error("Failed to initialize cache", zap.Error(err))
@@ -97,12 +104,11 @@ func SetUpApp() *App {
 	return app
 }
 
-func initializeRouter(cfg *config.Config, providerManager *providers.ProviderManager, tracker *router.LatencyTracker) (router.Router, []string, error) {
+func initializeRouter(cfg *config.Config, providerManager *providers.ProviderManager, tracker *router.LatencyTracker, redisClient *redis.Client) (router.Router, []string, error) {
 	routerStrategy := cfg.GetRouterStrategy()
 
 	logger.Info("Initializing router", zap.String("strategy", routerStrategy.Strategy))
 
-	// Extract provider budgets from Limits configuration
 	budgets := make(map[string]float64)
 	for name, limits := range cfg.Limits.Providers {
 		if limits.Budget > 0 {
@@ -111,10 +117,9 @@ func initializeRouter(cfg *config.Config, providerManager *providers.ProviderMan
 	}
 
 	var budgetManager router.BudgetManager
-	if cfg.Redis.Addr != "" {
-		redisClient := cache.NewRedisClient(cfg.Redis)
+	if redisClient != nil {
 		budgetManager = router.NewRedisBudgetManager(redisClient, budgets, logger)
-		logger.Info("Using Redis for budget tracking", zap.String("addr", cfg.Redis.Addr))
+		logger.Info("Using shared Redis client for budget tracking")
 	} else {
 		budgetManager = router.NewInMemoryBudgetManager(budgets, logger)
 		logger.Info("Using in-memory budget tracking")

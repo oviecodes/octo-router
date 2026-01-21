@@ -46,9 +46,7 @@ func NewRedisClient(config types.RedisData) *redis.Client {
 	})
 }
 
-func NewCacheClient(cfg types.CacheData, redisConfig types.RedisData) (Cache, error) {
-
-	client := NewRedisClient(redisConfig)
+func NewCacheClient(cfg types.CacheData, client *redis.Client) (Cache, error) {
 
 	semanticEnabled := cfg.Semantic["enabled"]
 	similarityThreshold := cfg.Semantic["similaritythreshold"]
