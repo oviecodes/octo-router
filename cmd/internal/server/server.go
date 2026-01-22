@@ -46,7 +46,9 @@ func Server() {
 		resolver = &app.MultiTenantResolver{Logger: logger}
 	} else {
 		singleTenant := app.SetUpApp()
-		resolver = &app.SingleTenantResolver{App: singleTenant}
+		resolverInstance := &app.SingleTenantResolver{}
+		resolverInstance.App.Store(singleTenant)
+		resolver = resolverInstance
 	}
 
 	ginRouter := gin.Default()

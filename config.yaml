@@ -175,11 +175,11 @@ costManagement:
     enabled: true
     threshold: 0.10  # Warn if single request > $0.10
 
-experiments:
-  - name: "claude-vs-gpt4"
-    enabled: true
-    traffic: 0.1  # 10% of requests
-    variants:
-      control: {provider: "openai", model: "openai/gpt-4o"}
-      treatment: {provider: "anthropic", model: "anthropic/claude-sonnet-4"}
+# experiments:
+#   - name: "claude-vs-gpt4"
+#     enabled: true
+#     traffic: 0.1  # 10% of requests
+#     variants:
+#       control: {provider: "openai", model: "openai/gpt-4o"}
+#       treatment: {provider: "anthropic", model: "anthropic/claude-sonnet-4"}
   

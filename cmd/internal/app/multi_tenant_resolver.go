@@ -60,3 +60,7 @@ func (m *MultiTenantResolver) GetProviderManager() *providers.ProviderManager {
 func (m *MultiTenantResolver) GetFallbackChain() []string {
 	return nil
 }
+
+func (m *MultiTenantResolver) Reload() error {
+	return nil
+}

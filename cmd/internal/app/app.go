@@ -23,6 +23,7 @@ type ConfigResolver interface {
 	GetCircuitBreaker() map[string]types.CircuitBreaker
 	GetProviderManager() *providers.ProviderManager
 	GetFallbackChain() []string
+	Reload() error
 }
 
 type App struct {

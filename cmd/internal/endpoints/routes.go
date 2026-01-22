@@ -20,4 +20,16 @@ func SetUpRoutes(resolver app.ConfigResolver, ginRouter *gin.Engine) {
 	ginRouter.GET("/admin/usage", func(c *gin.Context) {
 		handlers.GetUsageHistory(resolver, c)
 	})
+
+	ginRouter.GET("/admin/status", func(c *gin.Context) {
+		handlers.GetSystemStatus(resolver, c)
+	})
+
+	ginRouter.POST("/admin/budgets/reset", func(c *gin.Context) {
+		handlers.ResetBudget(resolver, c)
+	})
+
+	ginRouter.POST("/admin/config/reload", func(c *gin.Context) {
+		handlers.ReloadConfig(resolver, c)
+	})
 }
