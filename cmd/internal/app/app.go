@@ -39,7 +39,7 @@ type App struct {
 
 var logger = utils.SetUpLogger()
 
-func SetUpApp() *App {
+func SetUpApp() (*App, error) {
 	defer logger.Sync()
 
 	logger.Info("Loading configs")
@@ -47,7 +47,7 @@ func SetUpApp() *App {
 
 	if err != nil {
 		logger.Error("Failed to load config", zap.Error(err))
-		os.Exit(1)
+		return nil, err
 	}
 
 	providers.InitializeModelRegistry(providers.GetDefaultCatalog(), cfg.Models.Catalog)
@@ -102,7 +102,7 @@ func SetUpApp() *App {
 		FallbackChain:   fallback,
 	}
 
-	return app
+	return app, nil
 }
 
 func initializeRouter(cfg *config.Config, providerManager *providers.ProviderManager, tracker *router.LatencyTracker, redisClient *redis.Client) (router.Router, []string, error) {

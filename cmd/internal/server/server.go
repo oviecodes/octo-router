@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 var logger = utils.SetUpLogger()
@@ -45,7 +46,11 @@ func Server() {
 	if os.Getenv("MULTI_TENANT") == "true" {
 		resolver = &app.MultiTenantResolver{Logger: logger}
 	} else {
-		singleTenant := app.SetUpApp()
+		singleTenant, err := app.SetUpApp()
+		if err != nil {
+			logger.Error("Failed to initialize app", zap.Error(err))
+			os.Exit(1)
+		}
 		resolverInstance := &app.SingleTenantResolver{}
 		resolverInstance.App.Store(singleTenant)
 		resolver = resolverInstance

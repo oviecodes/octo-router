@@ -61,6 +61,10 @@ func LoadConfig() (*Config, error) {
 
 	config.DeduplicateProviders()
 
+	if err := config.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid configuration: %w", err)
+	}
+
 	return &config, nil
 }
 
@@ -175,4 +179,40 @@ func (c *Config) GetProviderByName(name string) *types.ProviderConfig {
 
 func (c *Config) GetCacheConfigData() *types.CacheData {
 	return &c.CacheConfig
+}
+
+// Validate checks for configuration errors
+func (c *Config) Validate() error {
+
+	hasEnabled := false
+	for _, p := range c.Providers {
+		if p.Enabled {
+			hasEnabled = true
+			break
+		}
+	}
+	if !hasEnabled {
+		return fmt.Errorf("at least one provider must be enabled")
+	}
+
+	if c.Routing.Strategy == "weighted" {
+		if len(c.Routing.Weights) == 0 {
+			return fmt.Errorf("weighted routing strategy requires weights to be defined")
+		}
+		for name, w := range c.Routing.Weights {
+			if w < 0 {
+				return fmt.Errorf("weight for provider %s cannot be negative (got %d)", name, w)
+			}
+		}
+	}
+
+	if c.Resilience.Timeout <= 0 {
+		return fmt.Errorf("resilience timeout must be greater than 0")
+	}
+
+	if c.Redis.Addr == "" && (c.CacheConfig.Enabled) {
+		return fmt.Errorf("redis address is required when caching is enabled")
+	}
+
+	return nil
 }

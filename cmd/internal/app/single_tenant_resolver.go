@@ -49,7 +49,10 @@ func (s *SingleTenantResolver) GetFallbackChain() []string {
 }
 
 func (s *SingleTenantResolver) Reload() error {
-	newApp := SetUpApp()
+	newApp, err := SetUpApp()
+	if err != nil {
+		return err
+	}
 	s.App.Store(newApp)
 	return nil
 }
