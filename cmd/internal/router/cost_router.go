@@ -12,17 +12,22 @@ import (
 )
 
 type CostRouter struct {
-	providerManager *providers.ProviderManager
-	costOptions     *types.CostOptions
-	budgetManager   BudgetManager
-	mu              sync.RWMutex
+	providerManager  *providers.ProviderManager
+	costOptions      *types.CostOptions
+	budgetManager    BudgetManager
+	rateLimitManager RateLimitManager
+	mu               sync.RWMutex
 }
 
 func (c *CostRouter) GetBudgetManager() BudgetManager {
 	return c.budgetManager
 }
 
-func NewCostRouter(providerManager *providers.ProviderManager, costOptions *types.CostOptions, budget BudgetManager) (*CostRouter, error) {
+func (c *CostRouter) GetRateLimitManager() RateLimitManager {
+	return c.rateLimitManager
+}
+
+func NewCostRouter(providerManager *providers.ProviderManager, costOptions *types.CostOptions, budget BudgetManager, rateLimit RateLimitManager) (*CostRouter, error) {
 	if providerManager == nil {
 		return nil, fmt.Errorf("provider manager cannot be nil")
 	}
@@ -47,9 +52,10 @@ func NewCostRouter(providerManager *providers.ProviderManager, costOptions *type
 	)
 
 	return &CostRouter{
-		providerManager: providerManager,
-		costOptions:     costOptions,
-		budgetManager:   budget,
+		providerManager:  providerManager,
+		costOptions:      costOptions,
+		budgetManager:    budget,
+		rateLimitManager: rateLimit,
 	}, nil
 }
 

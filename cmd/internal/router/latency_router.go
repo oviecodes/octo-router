@@ -9,21 +9,27 @@ import (
 )
 
 type LatencyRouter struct {
-	providerManager *providers.ProviderManager
-	tracker         *LatencyTracker
-	budgetManager   BudgetManager
+	providerManager  *providers.ProviderManager
+	tracker          *LatencyTracker
+	budgetManager    BudgetManager
+	rateLimitManager RateLimitManager
 }
 
-func NewLatencyRouter(providerManager *providers.ProviderManager, tracker *LatencyTracker, budget BudgetManager) (*LatencyRouter, error) {
+func NewLatencyRouter(providerManager *providers.ProviderManager, tracker *LatencyTracker, budget BudgetManager, rateLimit RateLimitManager) (*LatencyRouter, error) {
 	return &LatencyRouter{
-		providerManager: providerManager,
-		tracker:         tracker,
-		budgetManager:   budget,
+		providerManager:  providerManager,
+		tracker:          tracker,
+		budgetManager:    budget,
+		rateLimitManager: rateLimit,
 	}, nil
 }
 
 func (r *LatencyRouter) GetBudgetManager() BudgetManager {
 	return r.budgetManager
+}
+
+func (r *LatencyRouter) GetRateLimitManager() RateLimitManager {
+	return r.rateLimitManager
 }
 
 func (r *LatencyRouter) SelectProvider(ctx context.Context, deps *types.SelectProviderInput) (*types.SelectedProviderOutput, error) {

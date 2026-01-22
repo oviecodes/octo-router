@@ -15,6 +15,7 @@ type Router interface {
 	SelectProvider(ctx context.Context, deps *types.SelectProviderInput) (*types.SelectedProviderOutput, error)
 	GetProviderManager() *providers.ProviderManager
 	GetBudgetManager() BudgetManager
+	GetRateLimitManager() RateLimitManager
 }
 
 var logger = utils.SetUpLogger()
@@ -24,6 +25,8 @@ func ConfigureRouterStrategy(
 	providerManager *providers.ProviderManager,
 	tracker *LatencyTracker,
 	budgetManager BudgetManager,
+	rateLimitManager RateLimitManager,
+	rateLimits map[string]int,
 ) (Router, []string, error) {
 
 	var routerStrategy Router
@@ -31,28 +34,28 @@ func ConfigureRouterStrategy(
 
 	switch routingData.Strategy {
 	case "round-robin":
-		routerStrategy, err = NewRoundRobinRouter(providerManager, budgetManager)
+		routerStrategy, err = NewRoundRobinRouter(providerManager, budgetManager, rateLimitManager)
 		if err != nil {
 			logger.Error("Could not set up the round-robin router", zap.Error(err))
 			return nil, nil, err
 		}
 
 	case "cost-based":
-		routerStrategy, err = NewCostRouter(providerManager, routingData.CostOptions, budgetManager)
+		routerStrategy, err = NewCostRouter(providerManager, routingData.CostOptions, budgetManager, rateLimitManager)
 		if err != nil {
 			logger.Error("Could not set up the cost-based router", zap.Error(err))
 			return nil, nil, err
 		}
 
 	case "latency-based":
-		routerStrategy, err = NewLatencyRouter(providerManager, tracker, budgetManager)
+		routerStrategy, err = NewLatencyRouter(providerManager, tracker, budgetManager, rateLimitManager)
 		if err != nil {
 			logger.Error("Could not set up the latency-based router", zap.Error(err))
 			return nil, nil, err
 		}
 
 	case "weighted":
-		routerStrategy, err = NewWeightedRouter(providerManager, routingData.Weights, budgetManager)
+		routerStrategy, err = NewWeightedRouter(providerManager, routingData.Weights, budgetManager, rateLimitManager)
 		if err != nil {
 			logger.Error("Could not set up the weighted router", zap.Error(err))
 			return nil, nil, err
@@ -62,14 +65,21 @@ func ConfigureRouterStrategy(
 		return nil, nil, fmt.Errorf("unsupported routing strategy: %s (supported: round-robin, cost-based, latency-based, weighted)", routingData.Strategy)
 	}
 
-	pipeline := NewPipelineRouter(routerStrategy, providerManager, budgetManager)
+	pipeline := NewPipelineRouter(routerStrategy, providerManager, budgetManager, rateLimitManager)
 
 	if budgetManager != nil {
 		pipeline.AddFilter(filters.NewBudgetFilter(budgetManager, logger))
 		logger.Info("Enabled Budget Filter in Routing Pipeline")
 	}
 
+	// Add Rate Limit Filter if limits are defined
+	if len(rateLimits) > 0 && rateLimitManager != nil {
+		pipeline.AddFilter(filters.NewRateLimitFilter(rateLimitManager, rateLimits, logger))
+		logger.Info("Enabled Rate Limit Filter in Routing Pipeline")
+	}
+
 	if routingData.Policies != nil && routingData.Policies.Semantic != nil && routingData.Policies.Semantic.Enabled {
+		// ... existing semantic filter logic
 		var semanticFilter ProviderFilter
 		var filterErr error
 

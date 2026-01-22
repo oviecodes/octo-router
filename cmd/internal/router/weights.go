@@ -10,25 +10,31 @@ import (
 )
 
 type WeightedRouter struct {
-	providerManager *providers.ProviderManager
-	weights         map[string]int
-	budgetManager   BudgetManager
-	mu              sync.RWMutex
+	providerManager  *providers.ProviderManager
+	weights          map[string]int
+	budgetManager    BudgetManager
+	rateLimitManager RateLimitManager
+	mu               sync.RWMutex
 }
 
 func (r *WeightedRouter) GetBudgetManager() BudgetManager {
 	return r.budgetManager
 }
 
-func NewWeightedRouter(providerManager *providers.ProviderManager, weights map[string]int, budget BudgetManager) (*WeightedRouter, error) {
+func (r *WeightedRouter) GetRateLimitManager() RateLimitManager {
+	return r.rateLimitManager
+}
+
+func NewWeightedRouter(providerManager *providers.ProviderManager, weights map[string]int, budget BudgetManager, rateLimit RateLimitManager) (*WeightedRouter, error) {
 	if len(weights) == 0 {
 		return nil, fmt.Errorf("weighted router requires at least one weight definition")
 	}
 
 	return &WeightedRouter{
-		providerManager: providerManager,
-		weights:         weights,
-		budgetManager:   budget,
+		providerManager:  providerManager,
+		weights:          weights,
+		budgetManager:    budget,
+		rateLimitManager: rateLimit,
 	}, nil
 }
 

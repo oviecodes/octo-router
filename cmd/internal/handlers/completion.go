@@ -85,6 +85,22 @@ func Completions(resolver app.ConfigResolver, c *gin.Context) {
 
 	router := resolver.GetRouter()
 
+	globalLimit := resolver.GetConfig().Limits.RequestsPerMinute
+	if globalLimit > 0 {
+		rateLimitManager := router.GetRateLimitManager()
+		if rateLimitManager != nil {
+			allowed, err := rateLimitManager.Allow(ctx, "global:rpm", globalLimit)
+			if err != nil {
+				resolver.GetLogger().Error("Global rate limit check failed", zap.Error(err))
+			} else if !allowed {
+				c.JSON(http.StatusTooManyRequests, gin.H{
+					"error": "Global rate limit exceeded",
+				})
+				return
+			}
+		}
+	}
+
 	providerStruct, err := router.SelectProvider(ctx, &types.SelectProviderInput{
 		Messages: request.Messages,
 		Circuits: circuitBreakers,

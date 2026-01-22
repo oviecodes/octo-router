@@ -117,15 +117,27 @@ func initializeRouter(cfg *config.Config, providerManager *providers.ProviderMan
 	}
 
 	var budgetManager router.BudgetManager
+	var rateLimitManager router.RateLimitManager
+
 	if redisClient != nil {
 		budgetManager = router.NewRedisBudgetManager(redisClient, budgets, logger)
-		logger.Info("Using shared Redis client for budget tracking")
+		rateLimitManager = router.NewRedisRateLimitManager(redisClient, logger)
+		logger.Info("Using shared Redis client for budget and rate limit tracking")
 	} else {
 		budgetManager = router.NewInMemoryBudgetManager(budgets, logger)
-		logger.Info("Using in-memory budget tracking")
+		rateLimitManager = router.NewInMemoryRateLimitManager()
+		logger.Info("Using in-memory budget and rate limit tracking")
 	}
 
-	llmRouter, fallback, err := router.ConfigureRouterStrategy(routerStrategy, providerManager, tracker, budgetManager)
+	// Extract rate limits
+	rateLimits := make(map[string]int)
+	for name, limits := range cfg.Limits.Providers {
+		if limits.RequestsPerMinute > 0 {
+			rateLimits[name] = limits.RequestsPerMinute
+		}
+	}
+
+	llmRouter, fallback, err := router.ConfigureRouterStrategy(routerStrategy, providerManager, tracker, budgetManager, rateLimitManager, rateLimits)
 
 	return llmRouter, fallback, err
 }

@@ -41,7 +41,7 @@ func TestWeightedRouter_Distribution(t *testing.T) {
 	manager := providers.NewProviderManager(factory)
 	manager.SetProviders([]types.Provider{provA, provB, provC})
 
-	wr, err := router.NewWeightedRouter(manager, weights, nil)
+	wr, err := router.NewWeightedRouter(manager, weights, nil, nil)
 	if err != nil {
 		t.Fatalf("Failed to create weighted router: %v", err)
 	}

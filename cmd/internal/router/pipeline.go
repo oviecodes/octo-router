@@ -13,23 +13,29 @@ type ProviderFilter interface {
 }
 
 type PipelineRouter struct {
-	baseRouter      Router
-	filters         []ProviderFilter
-	providerManager *providers.ProviderManager
-	budgetManager   BudgetManager
+	baseRouter       Router
+	filters          []ProviderFilter
+	providerManager  *providers.ProviderManager
+	budgetManager    BudgetManager
+	rateLimitManager RateLimitManager
 }
 
-func NewPipelineRouter(baseRouter Router, manager *providers.ProviderManager, budget BudgetManager) *PipelineRouter {
+func NewPipelineRouter(baseRouter Router, manager *providers.ProviderManager, budget BudgetManager, rateLimit RateLimitManager) *PipelineRouter {
 	return &PipelineRouter{
-		baseRouter:      baseRouter,
-		filters:         make([]ProviderFilter, 0),
-		providerManager: manager,
-		budgetManager:   budget,
+		baseRouter:       baseRouter,
+		filters:          make([]ProviderFilter, 0),
+		providerManager:  manager,
+		budgetManager:    budget,
+		rateLimitManager: rateLimit,
 	}
 }
 
 func (r *PipelineRouter) GetBudgetManager() BudgetManager {
 	return r.budgetManager
+}
+
+func (r *PipelineRouter) GetRateLimitManager() RateLimitManager {
+	return r.rateLimitManager
 }
 
 func (r *PipelineRouter) AddFilter(filter ProviderFilter) {
