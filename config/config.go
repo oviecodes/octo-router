@@ -54,9 +54,17 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	// Expand environment variables in provider API keys
 	for i := range config.Providers {
 		config.Providers[i].APIKey = os.ExpandEnv(config.Providers[i].APIKey)
+	}
+
+	config.Redis.Addr = os.ExpandEnv(config.Redis.Addr)
+	if config.Redis.Addr == "" {
+		config.Redis.Addr = "localhost:6379"
+	}
+
+	if config.Routing.Policies != nil && config.Routing.Policies.Semantic != nil {
+		config.Routing.Policies.Semantic.SharedLibPath = os.ExpandEnv(config.Routing.Policies.Semantic.SharedLibPath)
 	}
 
 	config.DeduplicateProviders()

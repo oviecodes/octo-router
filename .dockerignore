@@ -1,0 +1,9 @@
+.git
+.gemini
+brain
+node_modules
+bin
+main
+*.test
+*.out
+.env

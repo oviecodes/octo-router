@@ -34,7 +34,7 @@ routing:
       engine: "embedding"  # Engines: "keyword" or "embedding"
       threshold: 0.45      
       model_path: "assets/models/embedding.onnx"
-      shared_lib_path: "/opt/homebrew/lib/libonnxruntime.dylib" # Optional: Explicit path
+      shared_lib_path: "${ONNX_LIB_PATH}" # Optional: Explicit path
       default_group: "general"
       extend_default: true # Enable system-default intents (coding, fast-chat)
       groups:
@@ -121,7 +121,7 @@ cache:
       if: request.user == "premium"
 
 redis:
-  addr: "localhost:6379"
+  addr: "${REDIS_ADDR}"
   password: ""
   db: 0
 
