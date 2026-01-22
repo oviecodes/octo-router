@@ -3,6 +3,9 @@ version: '3.8'
 services:
   api:
     build: .
+    x-bake:
+      platforms:
+        - linux/amd64
     ports:
       - "8000:8000"
     environment:
@@ -11,7 +14,7 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - ROUTER_API_KEY=${ROUTER_API_KEY}
-      - ONNXRUNTIME_LIB_PATH=/usr/local/lib/libonnxruntime.so
+      - ONNX_LIB_PATH=/usr/local/lib/libonnxruntime.so
     depends_on:
       - redis
     volumes:

@@ -1,0 +1,48 @@
+---
+title: Semantic Routing
+description: Learn how Octo Router uses local embeddings to route requests based on intent.
+---
+
+Semantic Routing is one of Octo Router's most powerful features. It allows you to route requests not just by model name, but by the "meaning" of the user's prompt.
+
+## How it Works
+
+1. **Local Embedding**: When a request arrives, Octo Router uses a local ONNX model (e.g., MiniLM-L6-v2) to convert the user's prompt into a mathematical vector (embedding).
+2. **Intent Classification**: This vector is compared against pre-defined "intent groups" using cosine similarity.
+3. **Decision**: If a match is found above a certain threshold, the router restricts the candidate providers to those allowed for that specific intent.
+
+## Configuration
+
+In your `config.yaml`, you define the semantic policy:
+
+```yaml
+routing:
+  policies:
+    semantic:
+      enabled: true
+      engine: "embedding"
+      threshold: 0.45      
+      model_path: "assets/models/embedding.onnx"
+      groups:
+        - name: "coding"
+          intent_description: "Questions about programming, debugging, or software architecture."
+          examples:
+            - "how do I fix a null pointer exception?"
+            - "write a binary search in python"
+          allow_providers: ["openai", "anthropic"]
+        
+        - name: "fast-chat"
+          intent_description: "Simple greetings or general knowledge questions."
+          allow_providers: ["gemini"]
+```
+
+### Why Local?
+
+Most other routers use an external API (like OpenAI's `/v1/embeddings`) for this classification. Octo Router does it **locally**, which means:
+- **Zero Latency**: No extra network round-trip.
+- **Privacy**: Your prompts are classified on your infrastructure.
+- **Cost**: No extra charges per request for classification.
+
+## Troubleshooting
+
+If you see errors related to the ONNX runtime in Docker, ensure your `docker-compose.yml` has the correct `ONNX_LIB_PATH` set to `/usr/local/lib/libonnxruntime.so`.

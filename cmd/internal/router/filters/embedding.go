@@ -136,12 +136,30 @@ func (f *EmbeddingFilter) loadModel(path string) error {
 		}
 	}
 
-	// 1. Load Tokenizer (custom tokenizer.json if present, else fallback)
-	tk := tokenizer.NewTokenizerFromFile(filepath.Join(filepath.Dir(finalPath), "tokenizer.json"))
-	if tk == nil {
-		f.tokenizer = pretrained.BertBaseUncased()
+	// workingDir, err := os.Getwd()
+
+	// 1. Load Tokenizer (custom tokenizer.json if present)
+	tokenizerPath := filepath.Join(filepath.Dir(finalPath), "tokenizer.json")
+	if _, err := os.Stat(tokenizerPath); err == nil {
+		f.logger.Debug("Loading tokenizer from file", zap.String("path", tokenizerPath), zap.String("finalPath", finalPath))
+
+		fileInfo, err := os.Stat(tokenizerPath)
+		if err != nil {
+			f.logger.Error("Cannot stat tokenizer file", zap.Error(err))
+		}
+		f.logger.Debug("Tokenizer file info",
+			zap.Int64("size", fileInfo.Size()),
+			zap.String("mode", fileInfo.Mode().String()))
+
+		tk := tokenizer.NewTokenizerFromFile(tokenizerPath)
+		if tk != nil {
+			f.tokenizer = tk
+		} else {
+			f.tokenizer = pretrained.BertBaseUncased()
+			f.logger.Debug("failed to load tokenizer from file", zap.String("path", tokenizerPath))
+		}
 	} else {
-		f.tokenizer = tk
+		return fmt.Errorf("tokenizer.json not found at %s. This file is required for semantic routing", tokenizerPath)
 	}
 
 	// 2. Bind Tensors to Buffers

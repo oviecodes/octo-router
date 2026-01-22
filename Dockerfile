@@ -16,16 +16,18 @@ RUN ARCH=$(uname -m) && \
     else \
     echo "Unsupported architecture: $ARCH"; exit 1; \
     fi && \
-    wget https://github.com/microsoft/onnxruntime/releases/download/v1.16.3/onnxruntime-linux-$ONNX_ARCH-1.16.3.tgz \
-    && tar -xzf onnxruntime-linux-$ONNX_ARCH-1.16.3.tgz \
-    && mv onnxruntime-linux-$ONNX_ARCH-1.16.3/lib/libonnxruntime.so.1.16.3 /usr/local/lib/libonnxruntime.so \
-    && rm -rf onnxruntime-linux-$ONNX_ARCH-1.16.3*
+    wget https://github.com/microsoft/onnxruntime/releases/download/v1.23.2/onnxruntime-linux-$ONNX_ARCH-1.23.2.tgz \
+    && tar -xzf onnxruntime-linux-$ONNX_ARCH-1.23.2.tgz \
+    && mv onnxruntime-linux-$ONNX_ARCH-1.23.2/lib/libonnxruntime.so.1.23.2 /usr/local/lib/libonnxruntime.so \
+    && rm -rf onnxruntime-linux-$ONNX_ARCH-1.23.2*
 
 # Copy go mod and sum files
 COPY go.mod go.sum ./
 
 # Download dependencies
 RUN go mod download
+
+RUN go mod tidy
 
 # Copy source code
 COPY . .
@@ -41,9 +43,12 @@ RUN apt-get update && apt-get install -y ca-certificates libc6 libgomp1
 
 WORKDIR /app
 
+RUN mkdir -p /go/pkg/mod/github.com/sugarme/tokenizer@v0.3.0/
+
 # Copy binary from builder
 COPY --from=builder /app/main .
 COPY --from=builder /usr/local/lib/libonnxruntime.so /usr/local/lib/libonnxruntime.so
+COPY --from=builder /go/pkg/mod/github.com/sugarme/tokenizer@v0.3.0/pretrained /go/pkg/mod/github.com/sugarme/tokenizer@v0.3.0/pretrained
 
 # Copy config and assets
 COPY config.yaml .
