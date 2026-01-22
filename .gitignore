@@ -1,5 +1,5 @@
 .env
-docs/
+internal-docs/
 config_test.yaml
 config_test.yml
 server

@@ -1,0 +1,46 @@
+---
+title: API Reference
+description: Reference for Octo Router's public and administrative endpoints.
+---
+
+Octo Router exposes an OpenAI-compatible interface for completions, along with administrative endpoints for cluster management.
+
+## Chat Completions
+
+`POST /v1/chat/completions`
+
+This endpoint is compatible with the OpenAI Chat Completions API.
+
+### Request Body
+Standard [OpenAI request body](https://platform.openai.com/docs/api-reference/chat/create). Octo Router ignores the `model` field if a routing policy is active.
+
+### Example Request
+```bash
+curl http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ROUTER_KEY" \
+  -d '{
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+---
+
+## Admin API
+
+Administrative endpoints require the same authentication key if configured.
+
+### Get System Status
+`GET /admin/status`
+
+Returns health status, circuit breaker states, and current routing strategy.
+
+### Reset Budgets
+`POST /admin/budgets/reset?provider=openai`
+
+Resets the budget usage for the specified provider.
+
+### Reload Configuration
+`POST /admin/config/reload`
+
+Triggers a zero-downtime hot-reload of the `config.yaml` file.

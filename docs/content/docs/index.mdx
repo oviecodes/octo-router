@@ -1,0 +1,22 @@
+---
+title: Introduction
+description: Overview of the Octo Router LLM Gateway.
+---
+
+Welcome to the Octo Router documentation. Octo Router is a high-performance LLM gateway designed to optimize cost, latency, and resilience for production-grade AI applications.
+
+## What is Octo Router?
+
+It acts as a middleware between your application and various LLM providers (OpenAI, Anthropic, Google Gemini). Instead of hardcoding model names, your application sends requests to Octo Router, which then selects the best provider based on your policies.
+
+### Key Features
+
+- **Semantic Routing**: Classify user intent using local ONNX embeddings without external API calls.
+- **Dynamic Cost Management**: Set budgets and let the router automatically swap to cheaper models as limits are approached.
+- **Redis-Backed State**: Share usage tracking, rate limits, and budgets across multiple router instances.
+- **Zero-Downtime Reload**: Update your configuration via API without dropping connections.
+- **Resilience**: Open circuit breakers for failing providers and automatically fallback to healthy ones.
+
+## Getting Started
+
+Ready to optimize your LLM stack? Follow the [Guided Setup](/docs/getting-started) to get up and running in minutes.

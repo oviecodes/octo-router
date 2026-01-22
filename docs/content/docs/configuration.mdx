@@ -1,0 +1,67 @@
+---
+title: Configuration
+description: Detailed guide on how to configure Octo Router using yaml.
+---
+
+Octo Router is configured via a `config.yaml` file located in the root directory.
+
+## Providers
+
+Define your LLM providers and their API keys. You can use environment variables using the `${VAR}` syntax.
+
+```yaml
+providers:
+  - name: openai
+    apiKey: ${OPENAI_API_KEY}
+    enabled: true
+  
+  - name: anthropic
+    apiKey: ${ANTHROPIC_API_KEY}
+    enabled: true
+```
+
+## Routing Strategies
+
+Choose how requests are distributed when multiple providers are available.
+
+- `weighted`: Distribute traffic based on defined weights.
+- `cost-based`: Route to the cheapest model that meets your requirements.
+- `latency-based`: Route to the fastest responding provider.
+
+```yaml
+routing:
+  strategy: "weighted"
+  weights:
+    openai: 70
+    anthropic: 30
+```
+
+## Semantic Routing
+
+Semantic routing allows you to route requests based on user intent. It uses a local ONNX model to classify prompts into "intent groups".
+
+```yaml
+routing:
+  policies:
+    semantic:
+      enabled: true
+      engine: "embedding"
+      threshold: 0.45      
+      model_path: "assets/models/embedding.onnx"
+      groups:
+        - name: "coding"
+          required_capability: "code-gen"
+          allow_providers: ["openai"]
+```
+
+## Budgeting
+
+Manage costs by setting daily budgets per provider or globally.
+
+```yaml
+limits:
+  dailyBudget: 50.00
+  providers:
+    openai:
+      budget: 10.00
+```

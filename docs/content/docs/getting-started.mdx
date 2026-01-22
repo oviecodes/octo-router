@@ -1,0 +1,49 @@
+---
+title: Getting Started
+description: Learn how to install and run Octo Router in your environment.
+---
+
+There are two primary ways to run Octo Router: locally using the Go toolchain or containerized via Docker.
+
+## Local Installation
+
+### Prerequisites
+- **Go**: 1.25.4 or higher
+- **Redis**: Required for budgeting and rate limiting.
+- **ONNX Runtime**: Required for semantic routing.
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/oviecodes/octo-router.git
+cd llm-router
+```
+
+### 2. Configure Environment
+Copy the example environment file and add your API keys:
+```bash
+cp .env.example .env
+```
+
+### 3. Install Dependencies
+```bash
+go mod download
+```
+
+### 4. Run the Server
+```bash
+go run cmd/server/main.go
+```
+
+## Docker Deployment (Recommended)
+
+Docker is the easiest way to get started as it bundles all dependencies, including the ONNX runtime library.
+
+### 1. Start with Docker Compose
+```bash
+docker compose up --build
+```
+This will start both the Octo Router API and a Redis instance automatically.
+
+## Next Steps
+
+Once the router is running, you can start [configuring your providers](/docs/configuration) or test the API using an OpenAI-compatible client.
