@@ -45,7 +45,7 @@ func TestConfig_Validate(t *testing.T) {
 					Strategy: "weighted",
 					Weights: map[string]int{
 						"openai":    50,
-						"anthropic": 40, // Sum = 90 (now valid due to normalization)
+						"anthropic": 40,
 					},
 				},
 				Resilience: types.ResilienceData{Timeout: 30},
