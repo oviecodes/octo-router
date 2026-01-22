@@ -154,6 +154,7 @@ func (g *GeminiProvider) CompleteStream(ctx context.Context, input *types.Stream
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
 
 	modelToUse := g.model
+	standardModelID := g.standardModelID
 	if input.Model != "" {
 
 		sdkModel, err := MapToGeminiModel(input.Model)
@@ -162,6 +163,7 @@ func (g *GeminiProvider) CompleteStream(ctx context.Context, input *types.Stream
 			return nil, fmt.Errorf("invalid gemini model: %w", err)
 		}
 		modelToUse = sdkModel
+		standardModelID = input.Model
 	}
 
 	geminiMessages, currentMessage := g.convertMessages(input.Messages)
@@ -186,6 +188,7 @@ func (g *GeminiProvider) CompleteStream(ctx context.Context, input *types.Stream
 		defer cancel()
 		defer close(chunks)
 
+		var finalUsage types.Usage
 		for chunk, err := range stream {
 			if err != nil {
 				logger.Error("Streaming error occurred", zap.Error(err))
@@ -197,6 +200,12 @@ func (g *GeminiProvider) CompleteStream(ctx context.Context, input *types.Stream
 					Error:   providerErr,
 				}
 				return
+			}
+
+			if chunk.UsageMetadata != nil {
+				finalUsage.PromptTokens = int(chunk.UsageMetadata.PromptTokenCount)
+				finalUsage.CompletionTokens = int(chunk.UsageMetadata.CandidatesTokenCount)
+				finalUsage.TotalTokens = finalUsage.PromptTokens + finalUsage.CompletionTokens
 			}
 
 			if len(chunk.Candidates) == 0 ||
@@ -212,9 +221,11 @@ func (g *GeminiProvider) CompleteStream(ctx context.Context, input *types.Stream
 			}
 		}
 
+		cost, _ := CalculateCost(standardModelID, finalUsage.PromptTokens, finalUsage.CompletionTokens)
 		chunks <- &types.StreamChunk{
-			Content: "",
 			Done:    true,
+			Usage:   finalUsage,
+			CostUSD: cost,
 		}
 	}()
 

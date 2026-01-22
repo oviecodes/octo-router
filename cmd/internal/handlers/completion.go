@@ -48,8 +48,19 @@ func HandleStreamingCompletion(resolver app.ConfigResolver, c *gin.Context, prov
 			break
 		}
 
-		c.SSEvent("message", chunk)
-		c.Writer.Flush()
+		if chunk.Done && chunk.Usage.TotalTokens > 0 {
+			if budgetManager := resolver.GetRouter().GetBudgetManager(); budgetManager != nil {
+				budgetManager.TrackUsage(providerName, chunk.CostUSD)
+			}
+			if usageHistory := resolver.GetRouter().GetUsageHistoryManager(); usageHistory != nil {
+				usageHistory.RecordUsage(context.Background(), providerName, chunk.CostUSD, chunk.Usage.PromptTokens, chunk.Usage.CompletionTokens)
+			}
+		}
+
+		if chunk.Content != "" {
+			c.SSEvent("message", chunk)
+			c.Writer.Flush()
+		}
 
 		if chunk.Done {
 			break
@@ -201,6 +212,10 @@ func handleCompletionWithModelChain(
 			budgetManager.TrackUsage(currentProviderName, response.CostUSD)
 		}
 
+		if usageHistory := resolver.GetRouter().GetUsageHistoryManager(); usageHistory != nil {
+			usageHistory.RecordUsage(ctx, currentProviderName, response.CostUSD, response.Usage.PromptTokens, response.Usage.CompletionTokens)
+		}
+
 		c.Header("X-Request-Cost", response.Headers["cost"])
 
 		c.JSON(http.StatusOK, gin.H{
@@ -283,6 +298,10 @@ func handleCompletionWithProviderChain(
 
 		if budgetManager := resolver.GetRouter().GetBudgetManager(); budgetManager != nil {
 			budgetManager.TrackUsage(currentProviderName, response.CostUSD)
+		}
+
+		if usageHistory := resolver.GetRouter().GetUsageHistoryManager(); usageHistory != nil {
+			usageHistory.RecordUsage(ctx, currentProviderName, response.CostUSD, response.Usage.PromptTokens, response.Usage.CompletionTokens)
 		}
 
 		c.Header("X-Request-Cost", response.Headers["cost"])

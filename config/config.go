@@ -18,6 +18,7 @@ type Config struct {
 	Limits      types.LimitsData       `mapstructure:"limits"`
 	CacheConfig types.CacheData        `mapstructure:"cache"`
 	Redis       types.RedisData        `mapstructure:"redis"`
+	Security    types.SecurityData     `mapstructure:"security"`
 }
 
 var logger = utils.SetUpLogger()

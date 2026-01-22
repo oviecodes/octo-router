@@ -4,6 +4,7 @@ import (
 	"llm-router/cmd/internal/app"
 	"llm-router/cmd/internal/endpoints"
 	"llm-router/cmd/internal/metrics"
+	"llm-router/cmd/internal/middleware"
 	"llm-router/utils"
 	"os"
 	"strconv"
@@ -50,6 +51,10 @@ func Server() {
 
 	ginRouter := gin.Default()
 	ginRouter.Use(MetricsMiddleware())
+
+	if config := resolver.GetConfig(); config != nil && len(config.Security.APIKeys) > 0 {
+		ginRouter.Use(middleware.APIKeyAuth(config.Security.APIKeys))
+	}
 
 	endpoints.SetUpRoutes(resolver, ginRouter)
 

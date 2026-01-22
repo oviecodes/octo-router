@@ -125,6 +125,7 @@ func (a *AnthropicProvider) CompleteStream(ctx context.Context, input *types.Str
 	ctx, cancel := context.WithTimeout(ctx, a.timeout)
 
 	modelToUse := a.model
+	standardModelID := a.standardModelID
 	if input.Model != "" {
 		sdkModel, err := MapToAnthropicModel(input.Model)
 		if err != nil {
@@ -132,6 +133,7 @@ func (a *AnthropicProvider) CompleteStream(ctx context.Context, input *types.Str
 			return nil, fmt.Errorf("invalid anthropic model: %w", err)
 		}
 		modelToUse = sdkModel
+		standardModelID = input.Model
 	}
 
 	anthropicMessages := a.convertMessages(input.Messages)
@@ -175,9 +177,18 @@ func (a *AnthropicProvider) CompleteStream(ctx context.Context, input *types.Str
 				}
 
 			case anthropic.MessageStopEvent:
+				inputTokens := int(message.Usage.InputTokens)
+				outputTokens := int(message.Usage.OutputTokens)
+				cost, _ := CalculateCost(standardModelID, inputTokens, outputTokens)
+
 				chunks <- &types.StreamChunk{
-					Content: "",
-					Done:    true,
+					Done: true,
+					Usage: types.Usage{
+						PromptTokens:     inputTokens,
+						CompletionTokens: outputTokens,
+						TotalTokens:      inputTokens + outputTokens,
+					},
+					CostUSD: cost,
 				}
 			}
 		}

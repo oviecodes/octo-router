@@ -122,7 +122,7 @@ func (o *OpenAIProvider) CompleteStream(ctx context.Context, input *types.Stream
 	ctx, cancel := context.WithTimeout(ctx, o.timeout)
 
 	modelToUse := o.model
-	// standardModelID := o.standardModelID
+	standardModelID := o.standardModelID
 	if input.Model != "" {
 		sdkModel, err := MapToOpenAIModel(input.Model)
 		if err != nil {
@@ -130,7 +130,7 @@ func (o *OpenAIProvider) CompleteStream(ctx context.Context, input *types.Stream
 			return nil, fmt.Errorf("invalid openai model: %w", err)
 		}
 		modelToUse = sdkModel
-		// standardModelID = input.Model
+		standardModelID = input.Model
 	}
 
 	fmt.Printf("model to use %v \n", modelToUse)
@@ -200,11 +200,19 @@ func (o *OpenAIProvider) CompleteStream(ctx context.Context, input *types.Stream
 
 		// later for token usages stuffs
 		if acc.Usage.TotalTokens > 0 {
-			logger.Debug("Stream completed",
-				zap.Int64("total_tokens", acc.Usage.TotalTokens),
-				zap.Int64("prompt_tokens", acc.Usage.PromptTokens),
-				zap.Int64("completion_tokens", acc.Usage.CompletionTokens),
-			)
+			inputTokens := int(acc.Usage.PromptTokens)
+			outputTokens := int(acc.Usage.CompletionTokens)
+			cost, _ := CalculateCost(standardModelID, inputTokens, outputTokens)
+
+			chunks <- &types.StreamChunk{
+				Done: true,
+				Usage: types.Usage{
+					PromptTokens:     inputTokens,
+					CompletionTokens: outputTokens,
+					TotalTokens:      inputTokens + outputTokens,
+				},
+				CostUSD: cost,
+			}
 		}
 	}()
 

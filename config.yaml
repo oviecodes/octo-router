@@ -125,6 +125,11 @@ redis:
   password: ""
   db: 0
 
+security:
+  apiKeys:
+    - "sk-octo-dev-123"
+    - "${ROUTER_API_KEY}"
+
 limits:
   # Per-user rate limits
   requestsPerMinute: 100

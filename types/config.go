@@ -52,3 +52,7 @@ type RedisData struct {
 	Password string `mapstructure:"password"`
 	DB       int    `mapstructure:"db"`
 }
+
+type SecurityData struct {
+	APIKeys []string `mapstructure:"apiKeys"`
+}

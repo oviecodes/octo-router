@@ -18,15 +18,17 @@ type PipelineRouter struct {
 	providerManager  *providers.ProviderManager
 	budgetManager    BudgetManager
 	rateLimitManager RateLimitManager
+	usageHistory     UsageHistoryManager
 }
 
-func NewPipelineRouter(baseRouter Router, manager *providers.ProviderManager, budget BudgetManager, rateLimit RateLimitManager) *PipelineRouter {
+func NewPipelineRouter(baseRouter Router, manager *providers.ProviderManager, budget BudgetManager, rateLimit RateLimitManager, history UsageHistoryManager) *PipelineRouter {
 	return &PipelineRouter{
 		baseRouter:       baseRouter,
 		filters:          make([]ProviderFilter, 0),
 		providerManager:  manager,
 		budgetManager:    budget,
 		rateLimitManager: rateLimit,
+		usageHistory:     history,
 	}
 }
 
@@ -36,6 +38,10 @@ func (r *PipelineRouter) GetBudgetManager() BudgetManager {
 
 func (r *PipelineRouter) GetRateLimitManager() RateLimitManager {
 	return r.rateLimitManager
+}
+
+func (r *PipelineRouter) GetUsageHistoryManager() UsageHistoryManager {
+	return r.usageHistory
 }
 
 func (r *PipelineRouter) AddFilter(filter ProviderFilter) {

@@ -17,12 +17,7 @@ func SetUpRoutes(resolver app.ConfigResolver, ginRouter *gin.Engine) {
 		handlers.Completions(resolver, c)
 	})
 
-	ginRouter.POST("/admin/config", func(c *gin.Context) {
-		handlers.AdminConfig(resolver, c)
+	ginRouter.GET("/admin/usage", func(c *gin.Context) {
+		handlers.GetUsageHistory(resolver, c)
 	})
-
-	ginRouter.POST("/admin/providers", func(c *gin.Context) {
-		handlers.AdminProviders(resolver, c)
-	})
-
 }

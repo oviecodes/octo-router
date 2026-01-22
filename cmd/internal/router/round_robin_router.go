@@ -14,6 +14,7 @@ type RoundRobinRouter struct {
 	providerManager  *providers.ProviderManager
 	budgetManager    BudgetManager
 	rateLimitManager RateLimitManager
+	usageHistory     UsageHistoryManager
 	mu               sync.Mutex
 	current          int
 }
@@ -24,6 +25,10 @@ func (r *RoundRobinRouter) GetBudgetManager() BudgetManager {
 
 func (r *RoundRobinRouter) GetRateLimitManager() RateLimitManager {
 	return r.rateLimitManager
+}
+
+func (r *RoundRobinRouter) GetUsageHistoryManager() UsageHistoryManager {
+	return r.usageHistory
 }
 
 func (r *RoundRobinRouter) SelectProvider(ctx context.Context, deps *types.SelectProviderInput) (*types.SelectedProviderOutput, error) {
@@ -58,7 +63,7 @@ func (r *RoundRobinRouter) SelectProvider(ctx context.Context, deps *types.Selec
 	return nil, fmt.Errorf("no healthy providers available")
 }
 
-func NewRoundRobinRouter(providerManager *providers.ProviderManager, budget BudgetManager, rateLimit RateLimitManager) (*RoundRobinRouter, error) {
+func NewRoundRobinRouter(providerManager *providers.ProviderManager, budget BudgetManager, rateLimit RateLimitManager, history UsageHistoryManager) (*RoundRobinRouter, error) {
 	if providerManager == nil {
 		return nil, fmt.Errorf("provider manager cannot be nil")
 	}
@@ -77,6 +82,7 @@ func NewRoundRobinRouter(providerManager *providers.ProviderManager, budget Budg
 		providerManager:  providerManager,
 		budgetManager:    budget,
 		rateLimitManager: rateLimit,
+		usageHistory:     history,
 	}, nil
 }
 
