@@ -1,4 +1,45 @@
 ---
 title: Weighted
-description: Learn how Octo Router uses local embeddings to route requests based on intent.
+description: Distribute traffic across providers using percentage-based weights.
 ---
+
+## Weighted Routing 
+
+Weighted routing distributes traffic across providers based on percentage weights. This is a **provider-centric** strategy, meaning Octo Router first selects a provider and then uses that provider's default model.
+
+```yaml
+routing:
+    strategy: "weighted"
+    weights:
+        gemini: 10
+        openai: 70
+        anthropic: 20
+```
+
+### Interaction with Semantic Policies
+
+Octo Router uses a pipeline approach where **policies are applied before routing**. 
+
+When a [Semantic Policy](/docs/routing/semantic) is enabled:
+1. **Filtering**: The request is analyzed, and the candidate pool is narrowed down based on the matched group's `allow_providers` or `required_capability`.
+2. **Weight Recalculation**: The weights of the *remaining* providers are summed, and a new relative distribution is calculated.
+3. **Selection**: A provider is picked from the narrowed pool using these adjusted weights.
+
+> [!NOTE]
+> If a provider is filtered out by a policy, its weight is ignored for that specific request.
+
+### Model Selection & The Catalog
+
+Unlike the [Cost-based](/docs/routing/cost) strategy, Weighted Routing selects **providers**, not specific models from the catalog.
+
+- **Default Model**: The router will use the model specified in the provider's `defaults` section.
+- **Capabilities**: While semantic policies use the `models: catalog` to find providers with specific capabilities (like `coding`), the final request still uses the provider's default model.
+
+### Summary: Weighted vs Cost-based
+
+| Feature | Weighted Strategy | Cost-Based Strategy |
+| :--- | :--- | :--- |
+| **Primary Unit** | **Provider** | **Model** |
+| **Logic** | Traffic distribution (%) | Minimum cost (USD) |
+| **Model Choice** | Uses provider's **default** | Picks **best in catalog** |
+| **Best For** | Load balancing & testing | Cost optimization |

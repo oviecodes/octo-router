@@ -1,0 +1,45 @@
+---
+title: Project Roadmap
+description: Future features and planned improvements for Octo Router.
+---
+
+Octo Router is rapidly evolving. This roadmap outlines the major features and architectural improvements we are currently working on.
+
+## Model Capabilities
+
+- **Tool Calling (Function Calling)**: Standardizing tool definitions and responses across all supported providers.
+- **Vision Support**: Native handling of image inputs for multi-modal models.
+- **JSON Mode**: Enforcing structured outputs across the fallback chain.
+
+## Core Engine Improvements
+
+- **High-Performance Caching**:
+  - **Exact Match**: Fully activating the Redis-backed response cache for identical prompts.
+  - **Semantic Caching**: Implementing vector-similarity lookup to reduce costs for conceptually similar queries.
+- **Advanced Cost Controls**:
+  - **Global Budgets**: Enforcing total spending caps across the entire cluster.
+  - **Auto-Downgrade**: Automatically failing over to cheaper tiers when approaching budget limits.
+  - **Operational Alerts**: Real-time notifications via Webhooks/Slack when thresholds are reached.
+
+## Enterprise Features
+
+- **Multi-Tenancy**: 
+  - Per-user/Per-key quotas and rate limits.
+  - Detailed usage tiering (e.g., Free vs. Pro user routing).
+- **Admin Dashboard**: A built-in web interface for:
+  - Real-time cost monitoring.
+  - Live configuration reloading.
+  - Provider health and latency visualization.
+
+## Ecosystem & Integrations
+
+- **Local Providers**: Direct support for local LLM engines:
+  - **Ollama**
+  - **vLLM**
+  - **llama.cpp**
+- **SDKs**: Official client libraries for Python, TypeScript, and Go.
+
+---
+
+> [!NOTE]
+> This roadmap is subject to change based on community feedback and project priorities. If you'd like to suggest a feature or report a bug, please open an issue on GitHub.

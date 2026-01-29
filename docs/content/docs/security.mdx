@@ -1,0 +1,78 @@
+---
+title: Security
+description: Secure your Octo Router instances with API keys and rate limiting.
+---
+
+Octo Router provides built-in security features to protect your endpoints from unauthorized access and prevent abuse through distributed rate limiting.
+
+## API Key Authentication
+
+Octo Router supports simple and effective API key authentication using Bearer tokens. When configured, all requests to the router must include a valid key in the `Authorization` header.
+
+### Configuration
+
+Add your authorized keys to the `security` section of your `config.yaml`:
+
+```yaml
+security:
+  apiKeys:
+    - "your-secret-key-1"
+    - "your-secret-key-2"
+```
+
+> [!TIP]
+> We recommend using high-entropy strings for your API keys. You can use environment variables to keep keys out of your configuration files: `apiKeys: ["${ROUTER_API_KEY}"]`.
+
+### Authenticating Requests
+
+To authenticate, include the key in your HTTP headers:
+
+```bash
+curl http://localhost:8000/v1/chat/completions \
+  -H "Authorization: Bearer your-secret-key-1" \
+  -H "Content-Type: application/json" \
+  ...
+```
+
+## Rate Limiting
+
+Octo Router implements token-bucket rate limiting to protect your infrastructure and manage upstream provider quotas.
+
+### Global Rate Limits
+
+Limit the total number of requests the router accepts per minute across all providers.
+
+```yaml
+limits:
+  requestsPerMinute: 100  # Global RPM cap
+```
+
+### Provider Rate Limits
+
+Manage individual provider quotas to prevent 429 errors from upstream LLMs.
+
+```yaml
+limits:
+  providers:
+    openai:
+      requestsPerMinute: 50
+    anthropic:
+      requestsPerMinute: 20
+```
+
+## Distributed Security
+
+When using **Redis**, rate limit counters are shared across all Octo Router instances. This ensures that your limits are enforced globally, regardless of how many replicas you are running in your cluster.
+
+| Feature | In-Memory | Redis (Recommended) |
+| :--- | :--- | :--- |
+| **Auth Performance** | Near-instant | Near-instant |
+| **Rate Limit Scope** | Per-instance | Cluster-wide |
+| **Persistence** | Lost on restart | Persistent |
+
+---
+
+## Future Security Roadmap
+- **Role-Based Access Control (RBAC)**: Fine-grained permissions for admin vs. member keys.
+- **Per-User Quotas**: Limiting usage based on sub-identifiers in the request metadata.
+- **IP Allowlisting**: Restricting access to specific CIDR blocks.

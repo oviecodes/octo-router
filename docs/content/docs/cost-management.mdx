@@ -3,59 +3,72 @@ title: Cost Management
 description: Learn how to control costs and manage budgets with Octo Router.
 ---
 
-One of Octo Router's primary goals is to make LLM usage affordable and predictable. It provides a robust budgeting system that tracks usage across all providers.
+Octo Router provides a transparent budgeting and usage tracking system to prevent unexpected costs and ensure predictable LLM spending.
 
-## Budget Hierarchy
+## Provider Budgets
 
-Budgets can be defined at multiple levels in `config.yaml`:
+Budgets are currently enforced at the **provider level**. When a provider exceeds its defined limit, Octo Router's "Bouncer" layer (the pipeline) automatically skips that provider and moves to the next candidate in the fallback chain.
 
-1. **Global Limits**: Caps the total spending across all users and providers.
-2. **Provider Limits**: Caps spending for a specific provider (e.g., OpenAI).
-3. **User Limits**: (Future) Caps spending per user.
+### Configuration
 
-## Configuration
-
-To enable cost management, you must configure the `limits` and `costManagement` sections.
+Define budgets in the `limits.providers` section of your `config.yaml`:
 
 ```yaml
 limits:
-  # Daily global budget in USD
-  dailyBudget: 50.00
-  
-  # Alert threshold (logs a warning)
-  alertThreshold: 40.00
-  
   providers:
     openai:
-      budget: 10.00  # Stop OpenAI requests after $10
+      budget: 10.00  # Stop OpenAI requests after $10 cumulative cost
     anthropic:
-      budget: 20.00
+      budget: 25.00
+    gemini:
+      budget: 50.00
 ```
 
-## Auto-Downgrade
+> [!NOTE]
+> Budgets are cumulative since the last "Reset". By default, limits are reset when the process restarts unless using Redis.
 
-The "Auto-Downgrade" feature automatically switches to a cheaper model or provider when you are approaching your budget limits.
+## Storage Backends
 
+Octo Router supports two ways to track and store usage data:
+
+| Backend | Scope | Persistence | Recommended for |
+| :--- | :--- | :--- | :--- |
+| **In-Memory** | Single Instance | Lost on Reset | Local development, single-binary usage. |
+| **Redis** | Multi-Instance | Persistent | Production, high-availability deployments. |
+
+To use Redis, configure the `redis` section:
 ```yaml
-costManagement:
-  autoDowngrade:
-    enabled: true
-    threshold: 0.9  # At 90% of usage, switch to cheaper models
+redis:
+  addr: "localhost:6379"
+  db: 0
 ```
 
 ## Tracking Costs
 
-Octo Router returns usage metadata in every response, compatible with the OpenAI format.
+Every successful API response includes a `usage` block and a total `cost_usd` field, following the OpenAI metadata standard.
 
 ```json
 {
+  "message": "Hello! I can help with that.",
+  "role": "assistant",
+  "provider": "openai",
   "usage": {
-    "prompt_tokens": 10,
-    "completion_tokens": 20,
-    "total_tokens": 30,
-    "cost_usd": 0.00045 
-  }
+    "prompt_tokens": 150,
+    "completion_tokens": 350,
+    "total_tokens": 500
+  },
+  "cost_usd": 0.00750
 }
 ```
 
-You can also query the [Admin API](/docs/api-reference#admin-api) to get current budget status.
+### Response Headers
+Octo Router also exposes the cost of the request in the `X-Request-Cost` HTTP header for easy monitoring without parsing the JSON body.
+
+## Resetting Budgets
+
+If you are using the **Admin API**, you can reset usage for a specific provider to resume traffic:
+
+```bash
+curl -X POST "http://localhost:8080/admin/budgets/reset?provider=openai" \
+     -H "Authorization: Bearer <your-admin-key>"
+```

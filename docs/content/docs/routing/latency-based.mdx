@@ -1,4 +1,41 @@
 ---
-title: Latency
-description: Learn how Octo Router uses local embeddings to route requests based on intent.
+title: Latency-based Routing
+description: Route requests to the fastest provider based on real-time performance tracking.
 ---
+
+## Latency-based Routing
+
+Latency-based routing is a **provider-centric** strategy that automatically selects the fastest provider in your network. It maintains a rolling average of response times to ensure your users always get the snappiest experience.
+
+### Configuration
+
+To enable latency-based routing, set your strategy to `latency-based`.
+
+```yaml
+routing:
+  strategy: "latency-based"
+```
+
+### How it Works
+
+The router uses a internal Scoring System to evaluate providers:
+
+1. **Scoring**: Octo Router tracks the Time to First Byte (TTFB) and total response time for every request across all providers.
+2. **The "Best" Choice**: When a request comes in, the router selects the provider with the lowest current latency score.
+3. **Exploration Phase**: To prevent "stale" data, providers with no recent history (Score = 0) are prioritized and selected randomly to refresh their performance metrics.
+
+### Interaction with Semantic Policies
+
+Latency-based routing works in tandem with [Semantic Policies](/docs/routing/semantic):
+
+1. **Filtering**: The semantic policy first filters the list of providers based on the user's intent or required capabilities.
+2. **Latency Selection**: The router then picks the **fastest provider** from that filtered subset.
+
+### Summary: Latency-based vs Others
+
+| Feature | Latency-Based | Weighted Strategy | Cost-Based |
+| :--- | :--- | :--- | :--- |
+| **Primary Unit** | **Provider** | **Provider** | **Model** |
+| **Logic** | Fastest Response | Traffic distribution (%) | Minimum cost (USD) |
+| **Model Choice** | Uses provider's **default** | Uses provider's **default** | Picks **best in catalog** |
+| **Best For** | Real-time apps & UX | Load balancing | Cost optimization |

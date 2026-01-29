@@ -1,4 +1,39 @@
 ---
 title: Round Robin
-description: Learn how Octo Router uses local embeddings to route requests based on intent.
+description: Distribute requests sequentially across a set of healthy providers.
 ---
+
+## Round Robin Routing
+
+Round Robin is a **provider-centric** strategy that cycles through your healthy providers in a fixed order. It ensures an even distribution of requests across your infrastructure, assuming all providers are healthy.
+
+### Configuration
+
+To enable round-robin routing, set your strategy to `round-robin`.
+
+```yaml
+routing:
+  strategy: "round-robin"
+```
+
+### How it Works
+
+1. **Circular Queue**: Octo Router maintains an internal pointer to the "next" provider in the list.
+2. **Selection**: For each new request, the router picks the next provider in sequence.
+3. **Health Awareness**: If a provider's [Circuit Breaker](/docs/resilience) is open, the router automatically skips it and moves to the next one in the queue.
+
+### Interaction with Semantic Policies
+
+Round Robin works with [Semantic Policies](/docs/routing/semantic) by operating on the *filtered* set:
+
+1. **Filtering**: The semantic policy narrows down the providers based on intent (e.g., only "fast-chat" providers).
+2. **Sequential Rotation**: The router then performs its round-robin cycle *only* among that subset of allowed providers.
+
+### Summary: Round Robin vs Others
+
+| Feature | Round Robin | Weighted Strategy | Latency-Based |
+| :--- | :--- | :--- | :--- |
+| **Primary Unit** | **Provider** | **Provider** | **Provider** |
+| **Logic** | Sequential Rotation | Percentage distribution | Fastest Response |
+| **Model Choice** | Uses provider's **default** | Uses provider's **default** | Uses provider's **default** |
+| **Best For** | Even load balancing | Testing specific ratios | Performance optimization |

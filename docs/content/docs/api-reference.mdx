@@ -3,7 +3,23 @@ title: API Reference
 description: Reference for Octo Router's public and administrative endpoints.
 ---
 
-Octo Router exposes an OpenAI-compatible interface for completions, along with administrative endpoints for cluster management.
+Octo Router exposes an OpenAI-compatible interface for completions, health monitoring, and administrative endpoints for cluster management.
+
+## System Health
+
+`GET /health`
+
+Returns the current server health and the count of active providers.
+
+### Example Response
+```json
+{
+  "status": "healthy",
+  "providers": 5
+}
+```
+
+---
 
 ## Chat Completions
 
@@ -13,6 +29,23 @@ This endpoint is compatible with the OpenAI Chat Completions API.
 
 ### Request Body
 Standard [OpenAI request body](https://platform.openai.com/docs/api-reference/chat/create). Octo Router ignores the `model` field if a routing policy is active.
+
+### Success Response
+Octo Router returns a flattened response for simplicity:
+
+```json
+{
+  "message": "Hello! How can I help you today?",
+  "role": "assistant",
+  "provider": "openai",
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 20,
+    "total_tokens": 30
+  },
+  "cost_usd": 0.00045
+}
+```
 
 ### Example Request
 ```bash
@@ -34,6 +67,11 @@ Administrative endpoints require the same authentication key if configured.
 `GET /admin/status`
 
 Returns health status, circuit breaker states, and current routing strategy.
+
+### Get Usage History
+`GET /admin/usage?date=YYYY-MM-DD`
+
+Returns token usage and cost statistics for the specified date (defaults to today).
 
 ### Reset Budgets
 `POST /admin/budgets/reset?provider=openai`

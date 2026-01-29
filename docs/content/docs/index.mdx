@@ -12,7 +12,7 @@ It acts as a middleware between your application and various LLM providers (Open
 ### Key Features
 
 - **Semantic Routing**: Classify user intent using local ONNX embeddings without external API calls.
-- **Dynamic Cost Management**: Set budgets and let the router automatically swap to cheaper models as limits are approached.
+- **Granular Cost Management**: Set strict budgets per provider and let the router automatically skip overspent endpoints to protect your margins.
 - **Redis-Backed State**: Share usage tracking, rate limits, and budgets across multiple router instances.
 - **Zero-Downtime Reload**: Update your configuration via API without dropping connections.
 - **Resilience**: Open circuit breakers for failing providers and automatically fallback to healthy ones.

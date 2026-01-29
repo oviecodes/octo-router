@@ -6,9 +6,11 @@
     "providers",
     "models",
     "routing",
+    "resilience",
+    "security",
     "cost-management",
     "caching-redis",
-    "advanced",
-    "api-reference"
+    "api-reference",
+    "roadmap"
   ]
 }

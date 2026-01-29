@@ -1,0 +1,65 @@
+---
+title: Resilience
+description: Learn how Octo Router ensures high availability through retries and circuit breakers.
+---
+
+Octo Router is designed for production reliability. It provides built-in mechanisms to handle transient failures, slow responses, and provider outages automatically.
+
+## Global Timeouts
+
+A global timeout ensures that no request hangs indefinitely. If a provider doesn't respond within this window, Octo Router cancels the request and attempts the next provider in the fallback chain.
+
+```yaml
+resilience:
+  timeout: 30000  # 30 seconds (in milliseconds)
+```
+
+## Retry Mechanism
+
+Octo Router uses an **Exponential Backoff** strategy for retries. If a provider returns a retryable error (like a 429 Rate Limit or 503 Service Unavailable), the router will wait and try again before failing over.
+
+### Configuration
+
+```yaml
+resilience:
+  retries:
+    maxAttempts: 3         # Number of total tries before failing over
+    initialDelay: 1000    # Start with 1 second delay
+    maxDelay: 10000       # Never wait more than 10 seconds
+    backoffMultiplier: 2   # Double the delay on each attempt (1s, 2s, 4s...)
+```
+
+### How it Works
+1. **Initial Failure**: A retryable error is detected.
+2. **Backoff**: The router calculates a delay based on the attempt number and multiplier.
+3. **Jitter**: A small amount of randomness is added to prevent "thundering herd" issues.
+4. **Max Attempts**: If all retries fail, the router moves to the next provider in the fallback chain.
+
+## Circuit Breakers
+
+Circuit breakers prevent Octo Router from wasting time on providers that are currently down. Each provider has its own circuit breaker that monitors its health in real-time.
+
+### Configuration
+
+```yaml
+resilience:
+  circuitBreaker:
+    failureThreshold: 5    # Stop sending traffic after 5 consecutive failures
+    resetTimeout: 60000     # Wait 60 seconds before testing the provider again
+```
+
+### States
+
+| State | Behavior |
+| :--- | :--- |
+| **CLOSED** | Normal operation. All traffic is allowed through to the provider. |
+| **OPEN** | The provider is isolated. Traffic is immediately redirected to fallbacks. |
+| **HALF_OPEN** | A trial state. A small amount of traffic is allowed to test if the provider recovered. |
+
+If a provider in the **HALF_OPEN** state succeeds, the circuit moves back to **CLOSED**. If it fails, it returns to **OPEN** for another `resetTimeout` period.
+
+## Best Practices
+
+- **Aggressive Timeouts**: For real-time chat, use lower timeouts (e.g., 10-15s) to ensure users aren't left waiting.
+- **Backoff Tuning**: If you frequently hit rate limits, increase the `backoffMultiplier` and `maxDelay`.
+- **Threshold Sensitivity**: Set `failureThreshold` higher for flaky providers and lower for critical production endpoints.

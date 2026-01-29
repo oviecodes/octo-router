@@ -10,10 +10,10 @@ Octo Router optimizes your LLM infrastructure by intelligently routing requests 
 
 - **Smart Routing**: Route based on cost, latency, or custom weights.
 - **Semantic Routing**: Locally classify user intent (coding vs. chat) using ONNX to pick the best model.
-- **Cost Management**: Set daily budgets, track spending, and auto-downgrade to cheaper models.
+- **Cost Management**: Set budgets per provider and automatically skip overspent endpoints.
 - **Resilience**: Built-in circuit breakers, retries, and automatic fallbacks.
 - **High Performance**: Written in Go with Redis-backed state management.
-- **Cloud Native**: Docker-ready and easy to deploy on Kubernetes.
+- **Docker Ready**: Fully containerized and ready for cloud deployment via Docker Compose or ECS.
 
 ## Quick Start
 

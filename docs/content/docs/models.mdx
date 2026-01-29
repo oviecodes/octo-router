@@ -2,3 +2,52 @@
 title: Models
 description: Learn how Octo Router uses local embeddings to route requests based on intent.
 ---
+
+The section discusses the models section of the configuration field
+
+## Defaults
+
+A default model & maxTokens can be provided for each of the provider
+
+```yaml
+models:
+  defaults:
+    openai:
+      model: "openai/gpt-4o-mini"
+      maxTokens: 4096
+
+    anthropic:
+      model: "anthropic/claude-haiku-3"
+      maxTokens: 4096
+
+    gemini:
+      model: "gemini/gemini-2.5-flash-lite"
+      maxTokens: 4096
+```
+
+The defaults must be specified using the same name with it's respective provider.
+
+## Catalog
+
+OctoRouter has a built in catalog of models, but you may want to add new models or override existing ones.
+
+
+```yaml
+models:
+  catalog:
+    - id: "openai/gpt-4o"
+      provider: "openai"
+      name: "GPT-4o (Special Rate)"
+      inputCost: 2.00
+      outputCost: 8.00
+      contextWindow: 128000
+      tier: "premium"
+      capabilities:
+        - "coding"
+        - "reasoning"
+        - "creative"
+
+```
+
+inputCost and outputCost are priced per 1,000,000 tokens
+

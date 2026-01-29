@@ -1,19 +1,16 @@
 ---
-title: Semantic
-description: Learn how Octo Router uses local embeddings to route requests based on intent.
+title: Semantic Routing
+description: Route requests based on the "meaning" or keywords of a prompt.
 ---
 
-Semantic Routing is one of Octo Router's most powerful features. It allows you to route requests not just by model name, but by the "meaning" of the user's prompt.
+Semantic Routing allows you to route requests based on the intent of the user's prompt rather than just a model name. Octo Router supports two engines for this classification: **Embedding** and **Keyword**.
 
-## How it Works
+## Engine Types
 
-1. **Local Embedding**: When a request arrives, Octo Router uses a local ONNX model (e.g., MiniLM-L6-v2) to convert the user's prompt into a mathematical vector (embedding).
-2. **Intent Classification**: This vector is compared against pre-defined "intent groups" using cosine similarity.
-3. **Decision**: If a match is found above a certain threshold, the router restricts the candidate providers to those allowed for that specific intent.
+### 1. Embedding Engine (Smart)
+The embedding engine uses a local ONNX model to convert prompts into mathematical vectors and compares them against intent groups using cosine similarity.
 
-## Configuration
-
-In your `config.yaml`, you define the semantic policy:
+**Best for**: Complex intents, natural language, and high accuracy.
 
 ```yaml
 routing:
@@ -25,24 +22,121 @@ routing:
       model_path: "assets/models/embedding.onnx"
       groups:
         - name: "coding"
-          intent_description: "Questions about programming, debugging, or software architecture."
+          intent_description: "Programming or architecture questions."
           examples:
             - "how do I fix a null pointer exception?"
             - "write a binary search in python"
           allow_providers: ["openai", "anthropic"]
+```
+
+### 2. Keyword Engine (Fast)
+The keyword engine performs simple string matching against defined keywords in the prompt. It's extremely fast and requires no local model.
+
+**Best for**: Routing specific commands, simple tags, or when minimizing CPU/Memory usage.
+
+```yaml
+routing:
+  policies:
+    semantic:
+      enabled: true
+      engine: "keyword"
+      groups:
+        - name: "image-gen"
+          intent_keywords: ["generate", "draw", "image", "paint"]
+          allow_providers: ["openai"]
         
         - name: "fast-chat"
-          intent_description: "Simple greetings or general knowledge questions."
+          intent_keywords: ["hello", "hi", "hey"]
           allow_providers: ["gemini"]
 ```
 
-### Why Local?
+## How it Works
 
-Most other routers use an external API (like OpenAI's `/v1/embeddings`) for this classification. Octo Router does it **locally**, which means:
-- **Zero Latency**: No extra network round-trip.
-- **Privacy**: Your prompts are classified on your infrastructure.
-- **Cost**: No extra charges per request for classification.
+Regardless of the engine, the flow remains the same:
+1. **Analysis**: The prompt is processed by either the Embedding or Keyword engine.
+2. **Filtering**: If a match is found, the router restricts candidates to the `allow_providers` defined for that group.
+3. **Routing**: The final selection strategy (Weighted, Cost, etc.) is applied to the filtered pool.
+
+## Which engine should I use?
+
+| Feature | Embedding Engine | Keyword Engine |
+| :--- | :--- | :--- |
+| **Logic** | Neural (Local Model) | String Matching |
+| **Accuracy** | High (Context Aware) | Simple (Exact/Partial) |
+| **Resources** | Requires CPU/Memory for ONNX | Near Zero |
+| **Use Case** | Intent-based routing | Tag/Keyword-based routing |
+
+## Defining Intent Groups
+
+Intent groups are the core logic of semantic routing. They define how prompts are classified and which providers are allowed for each category.
+
+### Group Configuration Reference
+
+| Field | Engine | Description |
+| :--- | :--- | :--- |
+| `name` | Both | A unique identifier for the group (e.g., `coding`, `image-gen`). |
+| `intent_description` | Embedding | A natural language summary of what this group covers. Used to prime the embedding engine. |
+| `examples` | Embedding | Few-shot phrases that represent the intent. More examples lead to better matching. |
+| `intent_keywords` | Keyword | A list of specific words or tags that trigger the group when found in the prompt. |
+| `allow_providers` | Both | Optional. Restricts the router to these specific providers when this group is matched. |
+| `required_capability` | Both | Optional. Filters providers based on their [catalog capabilities](/docs/providers#capabilities) (e.g., `vision`, `coding`). |
+| `use_system_default` | Embedding | If `true`, appends built-in examples from Octo Router's core library (see below). |
+
+### Best Practices for Better Matching
+
+To ensure the **Embedding Engine** is accurate, follow these guidelines:
+
+1. **Be Descriptive**: In `intent_description`, use clear, distinct language. Instead of "coding", use "Requests involving writing, debugging, or explaining software code and architecture."
+2. **Quality Samples**: Provide 5-10 `examples` that cover different ways a user might ask for the same thing. 
+3. **Avoid Overlap**: If two groups (e.g., `support` and `billing`) have very similar examples, the router may struggle to distinguish them. Keep them distinct.
+4. **Keyword Precision**: Use the **Keyword** engine for unambiguous commands (like `/image`) and the **Embedding** engine for conversational intent.
+
+## Extending System Defaults
+
+Octo Router comes with pre-tuned intent examples for common categories like `coding` and `fast-chat`. You can inherit these examples to save time while still defining your own providers and capabilities.
+
+### Global Toggle: `extend_default`
+Set `extend_default: true` at the policy level to enable the inheritance mechanism.
+
+### Group Toggle: `use_system_default`
+Set `use_system_default: true` within a specific group to pull in built-in examples.
+
+**Example: Advanced Coding Setup**
+In this example, we inherit the system's "coding" examples (which include various programming queries) but restrict the providers to OpenAI and Anthropic.
+
+```yaml
+routing:
+  policies:
+    semantic:
+      enabled: true
+      engine: "embedding"
+      extend_default: true # Enable the extension system
+      groups:
+        - name: "coding"
+          use_system_default: true # Inherit pre-tuned coding examples
+          allow_providers: ["openai", "anthropic"]
+          required_capability: "coding" 
+```
+
+### Built-in Groups
+The following groups are supported for inheritance:
+- **`fast-chat`**: Greetings, basic math, and general knowledge.
+
+## Technical Configuration
+
+For fine-grained control over the **Embedding Engine**, you can tune the following technical parameters:
+
+| Option | Default | Description |
+| :--- | :--- | :--- |
+| `threshold` | `0.5` | The minimum cosine similarity score (0.0 to 1.0) required to trigger a match. Higher values require the prompt to be closer to your examples. |
+| `default_group` | N/A | The group to use if no other group meets the `threshold`. This acts as a global fallback for semantic routing. |
+| `model_path` | N/A | Absolute or relative path to the local ONNX embedding model (e.g., MiniLM). |
+| `shared_lib_path` | N/A | Optional. Path to the ONNX Runtime library (`.so`, `.dylib`, or `.dll`). Useful if the library is not in your system's standard search path. |
+
+### Tuning the Threshold
+- **Precision (0.7+)**: Only route when you are very certain of the intent. Leads to more "default group" fallbacks.
+- **Recall (0.3 - 0.5)**: More aggressive routing. Useful if your intent groups are very distinct.
 
 ## Troubleshooting
 
-If you see errors related to the ONNX runtime in Docker, ensure your `docker-compose.yml` has the correct `ONNX_LIB_PATH` set to `/usr/local/lib/libonnxruntime.so`.
+If using the **Embedding** engine, ensure your `docker-compose.yml` has the correct `ONNX_LIB_PATH` set (e.g., `/usr/local/lib/libonnxruntime.so`). For the **Keyword** engine, no extra setup is required.

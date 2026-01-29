@@ -1,4 +1,51 @@
 ---
-title: Cost based Routing
-description: Learn how Octo Router uses local embeddings to route requests based on intent.
+title: Cost-based Routing
+description: Optimize for savings by automatically selecting the cheapest model across providers.
 ---
+
+## Cost-based Routing
+
+Cost-based routing is a **model-centric** strategy. Unlike Weighted or Round-Robin, which select providers, this strategy scans your entire `models: catalog` to find the specific model with the lowest per-token cost that satisfies your requirements.
+
+### Configuration
+
+To enable cost-based routing, set your strategy to `cost-based` and define your `costOptions`.
+
+```yaml
+routing:
+  strategy: "cost-based"
+  
+  costOptions:
+    defaultTier: "premium"      # Standard tier to use
+    minimumTier: "budget"       # Never go below this tier
+    tierStrategy: "same-tier"    # "same-tier", "allow-downgrade", or "cheapest"
+```
+
+#### Cost Options
+| Option | Description |
+| :--- | :--- |
+| `defaultTier` | The target tier (budget, standard, premium, ultra-premium). |
+| `minimumTier` | A safety floor; Octo Router will never route to a model below this quality level. |
+| `tierStrategy` | `same-tier`: only models in the default tier. `allow-downgrade`: cheaper models if available. `cheapest`: ignore tiers, pick absolute lowest cost. |
+
+### Model Selection Logic
+
+1. **Catalog Scan**: The router looks up every model defined in your `catalog`.
+2. **Token Estimation**: It estimates the cost of your current prompt using the specific tokenizers for each provider.
+3. **Price Comparison**: It calculates the USD cost for the estimated tokens and selects the cheapest model that matches your tier constraints.
+
+### Interaction with Semantic Policies
+
+Cost-based routing integrates seamlessly with [Semantic Policies](/docs/routing/semantic).
+
+1. **Filtering**: If an intent matches (e.g., "coding"), the policy filters the catalog to only include models from `allow_providers` or models with the `required_capability`.
+2. **Cost Selection**: The router then picks the **cheapest remaining model** from that filtered list.
+
+### Summary: Cost-based vs Weighted
+
+| Feature | Cost-Based Strategy | Weighted Strategy |
+| :--- | :--- | :--- |
+| **Primary Unit** | **Model** | **Provider** |
+| **Logic** | Minimum cost (USD) | Traffic distribution (%) |
+| **Selection** | Picks **best in catalog** | Uses provider's **default** |
+| **Best For** | Cost optimization | Load balancing & testing |

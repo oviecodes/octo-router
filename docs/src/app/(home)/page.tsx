@@ -56,12 +56,12 @@ export default function HomePage() {
           />
           <FeatureCard
             title="Cost Controls"
-            description="Set daily budgets per provider. Automatically downgrade to cheaper models when approaching limits to prevent overage."
+            description="Set daily budgets per provider. Automatically skip providers that exceed limits to prevent overspending and ensure budget predictability."
             icon="💰"
           />
           <FeatureCard
-            title="Cloud Native"
-            description="Stateless architecture with Redis backing. Deploys easily to Kubernetes with zero-downtime config reloads."
+            title="Docker Ready"
+            description="Fully containerized architecture. Deploy instantly with Docker Compose and scale horizontally thanks to stateless Redis-backed tracking."
             icon="🐳"
           />
         </div>
@@ -151,7 +151,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <UseCaseCard
               title="SaaS Tiered Pricing"
-              description="Route 'Free Tier' users to 7B models and 'Pro' users to GPT-4o. Enforce strict budget limits per tenant."
+              description="Route requests to different models based on user priority or tier. Enforce strict budget limits per provider to maintain healthy margins."
             />
             <UseCaseCard
               title="Internal Developer Platform"
@@ -159,7 +159,7 @@ export default function HomePage() {
             />
             <UseCaseCard
               title="High-Traffic Consumer App"
-              description="Cache common responses with Redis. Use weighted routing to distribute load across multiple API (OpenAI + Azure)."
+              description="Monitor performance metrics in real-time. Use weighted routing to distribute load across multiple providers ensuring high availability."
             />
           </div>
         </div>
