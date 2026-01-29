@@ -172,11 +172,11 @@ export default function HomePage() {
           <div className="space-y-6">
             <FAQItem
               question="Does Octo Router add latency?"
-              answer="Minimal overhead (~2ms). It's written in Go and uses a highly optimized routing pipeline."
+              answer="Minimal overhead. It's written in Go and uses a highly optimized routing pipeline."
             />
             <FAQItem
               question="Can I use it with any LLM?"
-              answer="Yes, as long as it has an OpenAI-compatible API (which most do, including vLLM, Ollama, and Groq)."
+              answer="For now it's only compactible with OpenAI, Gemini & Anthropic providers"
             />
             <FAQItem
               question="How does semantic routing work locally?"
