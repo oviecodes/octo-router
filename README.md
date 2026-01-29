@@ -4,7 +4,7 @@
 
 Octo Router optimizes your LLM infrastructure by intelligently routing requests across providers (OpenAI, Anthropic, Gemini) to reduce costs, improve latency, and ensure high availability.
 
-[**Read the Full Documentation**](docs/content/docs/index.mdx)
+[**Read the Full Documentation**](https://octo-router.vercel.app/docs)
 
 ## Key Features
 
