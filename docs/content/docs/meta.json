@@ -1,0 +1,14 @@
+{
+  "pages": [
+    "index",
+    "getting-started",
+    "configuration",
+    "providers",
+    "models",
+    "routing",
+    "cost-management",
+    "caching-redis",
+    "advanced",
+    "api-reference"
+  ]
+}

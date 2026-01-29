@@ -1,0 +1,10 @@
+{
+  "pages": [
+    "index",
+    "weighted",
+    "round-robin",
+    "cost-based",
+    "latency-based",
+    "semantic"
+  ]
+}

@@ -1,0 +1,16 @@
+---
+title: Routing
+description: Understand how Octo Router routes requests.
+---
+
+Routing is the core function of Octo Router. It determines which provider and model fulfills a request based on your configured strategy and policies.
+
+## Available Strategies
+
+Octo Router supports several routing strategies to optimize for different goals:
+
+- **[Weighted](/docs/routing/weighted)**: Distribute traffic across providers based on percentage weights.
+- **[Round Robin](/docs/routing/round-robin)**: Distribute traffic evenly across all available providers.
+- **[Cost-Based](/docs/routing/cost-based)**: Automatically select the cheapest provider that meets the requirements.
+- **[Latency-Based](/docs/routing/latency-based)**: Route to the provider with the lowest response time.
+- **[Semantic](/docs/routing/semantic)**: Route based on the intent or "meaning" of the user's prompt.

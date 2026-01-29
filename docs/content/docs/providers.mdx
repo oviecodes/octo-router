@@ -1,0 +1,32 @@
+---
+title: Providers
+description: Learn how to work with OctoRouter providers.
+---
+
+This section contains the current provider configuration options and the planned updates.
+
+OctoRouter supports just 3 providers currently, namely OpenAI, Anthropic, and Gemini.
+
+``` yaml
+providers:
+  - name: openai
+    apiKey: ${OPENAI_API_KEY}
+    enabled: true
+  
+  - name: anthropic
+    apiKey: ${ANTHROPIC_API_KEY}
+    enabled: true
+  
+  - name: gemini
+    apiKey: ${GEMINI_API_KEY}
+    enabled: false  # Can disable providers
+```
+
+Providers can be have their enabled field set to true or false. When set to true, the provider is created and added to the pool of providers, and when set to false the provider is ignored.
+
+
+## Future Plans
+
+Currently the providers are supported only through their respective native endpoints, i.e openAI points to api.openai.com. Many routers out there allow users to route request to azure endpoints, so we'll be providing a `baseUrl` to the provider config, for providers that aren't anthropic or gemini.
+
+This will also help with provider extensibility since the openAI API structure is the de-facto industry standard. we might even consider renaming the openai provider type to something like `openai-compatible` or `generic` in the future to make this explicit.

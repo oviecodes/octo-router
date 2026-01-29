@@ -1,0 +1,44 @@
+---
+title: Advanced Topics
+description: Extending Octo Router and deploying to production environments.
+---
+
+## Deploying to Kubernetes
+
+Octo Router is designed to be cloud-native. A typical Kubernetes deployment would involve:
+
+1. **Deployment**: Running the `octo-router` container (replicas backed by Shared Redis).
+2. **Service**: Exposing port `8000`.
+3. **ConfigMap**: Mounting `config.yaml` into `/app/config.yaml`.
+4. **Secret**: Injecting API keys as environment variables (`OPENAI_API_KEY`, etc.).
+
+### Shared State
+Ensure all replicas point to the same Redis instance to maintain global rate limits and budget tracking.
+
+```yaml
+env:
+  - name: REDIS_ADDR
+    value: "redis-master:6379"
+```
+
+## Adding Custom Providers
+
+Octo Router is written in Go and uses a modular interface for providers. To add a new provider (e.g., a local Ollama instance or a private fine-tuned model):
+
+1. **Implement Interface**: Create a new struct in `cmd/internal/providers` that satisfies the `Provider` interface.
+2. **Register Factory**: Add your provider to the factory in `cmd/internal/providers/factory.go`.
+3. **Build**: Recompile the binary.
+
+```go
+type Provider interface {
+    CreateCompletion(ctx context.Context, req types.CompletionRequest) (*types.CompletionResponse, error)
+    GetProviderName() string
+}
+```
+
+## Monitoring
+
+The router exposes a `/metrics` endpoint (if enabled) and detailed structured logs. We recommend shipping these logs to ELK, Datadog, or Grafana Loki to visualize:
+- Request latency
+- Token usage per provider
+- Circuit breaker trip events

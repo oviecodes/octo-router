@@ -6,6 +6,16 @@ const inter = Inter({
   subsets: ['latin'],
 });
 
+export const metadata = {
+  title: 'OctoRouter',
+  description: 'OctoRouter documentation',
+  icons: {
+    icon: '/octorouter-logo.svg',
+    shortcut: '/octorouter-logo.svg',
+    apple: '/octorouter-logo.svg'
+  },
+};
+
 export default function Layout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="en" className={inter.className} suppressHydrationWarning>

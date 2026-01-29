@@ -3,7 +3,7 @@ title: Configuration
 description: Detailed guide on how to configure Octo Router using yaml.
 ---
 
-Octo Router is configured via a `config.yaml` file located in the root directory.
+Octo Router is configured via a `config.yaml` file located in the root directory. This section provides an overview of the config.yaml file and it's fields.
 
 ## Providers
 
@@ -15,10 +15,30 @@ providers:
     apiKey: ${OPENAI_API_KEY}
     enabled: true
   
-  - name: anthropic
-    apiKey: ${ANTHROPIC_API_KEY}
-    enabled: true
 ```
+
+## Models
+
+The config has a model section to define the default models for each providers set up in the provider section
+
+```yaml
+models:
+  defaults:
+    openai:
+      model: "openai/gpt-4o-mini"
+      maxTokens: 4096
+
+    anthropic:
+      model: "anthropic/claude-haiku-3"
+      maxTokens: 4096
+
+    gemini:
+      model: "gemini/gemini-2.5-flash-lite"
+      maxTokens: 4096
+```
+
+If these defaults are not provided then a default model is selected by OctoRouter automatically. The default models are needed for certain routing strategies like round-robin and most especially if the semantic routing is disabled.
+
 
 ## Routing Strategies
 
@@ -27,6 +47,7 @@ Choose how requests are distributed when multiple providers are available.
 - `weighted`: Distribute traffic based on defined weights.
 - `cost-based`: Route to the cheapest model that meets your requirements.
 - `latency-based`: Route to the fastest responding provider.
+- `round-robin `: Distributes request across multiple providers equally.
 
 ```yaml
 routing:
@@ -38,7 +59,7 @@ routing:
 
 ## Semantic Routing
 
-Semantic routing allows you to route requests based on user intent. It uses a local ONNX model to classify prompts into "intent groups".
+Semantic routing allows you to route requests based on user intent. When in embedding mode, It uses a local ONNX model to classify prompts into "intent groups".
 
 ```yaml
 routing:
@@ -54,7 +75,7 @@ routing:
           allow_providers: ["openai"]
 ```
 
-## Budgeting
+## Limits
 
 Manage costs by setting daily budgets per provider or globally.
 
@@ -64,4 +85,24 @@ limits:
   providers:
     openai:
       budget: 10.00
+```
+
+## Resilience
+
+Manage timeouts, retries and circuit breakers
+
+```yaml
+resilience:
+  timeout: 30000  # 30 second timeout
+  
+  retries:
+    maxAttempts: 3
+    initialDelay: 1000  # 1 second
+    maxDelay: 10000     # 10 seconds
+    backoffMultiplier: 2  # Exponential backoff
+  
+  circuitBreaker:
+    failureThreshold: 5  # Open after 5 failures
+    resetTimeout: 60000
+
 ```

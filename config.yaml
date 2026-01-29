@@ -90,17 +90,18 @@ models:
     #   contextWindow: 8192
     #   tier: "budget"
 
-  # Route specific prompts to specific models
-  rules:
-    - if: prompt.length > 5000
-      use: "anthropic/claude-sonnet-4"  # Better at long context
+ #### NOT implemented
+  # # Route specific prompts to specific models
+  # rules:
+  #   - if: prompt.length > 5000
+  #     use: "anthropic/claude-sonnet-4"  # Better at long context
 
-    - if: task == "code-generation"
-      use: "openai/gpt-4o"  # Better at code
+  #   - if: task == "code-generation"
+  #     use: "openai/gpt-4o"  # Better at code
 
-    - if: priority == "high"
-      use: "openai/gpt-4o"  # Fastest, most capable
-      provider: "openai"
+  #   - if: priority == "high"
+  #     use: "openai/gpt-4o"  # Fastest, most capable
+  #     provider: "openai"
 
 cache:
   enabled: true

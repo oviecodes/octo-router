@@ -1,0 +1,48 @@
+---
+title: Caching & Redis
+description: Configure Redis for high-performance caching and state management.
+---
+
+Octo Router uses Redis for three critical functions:
+
+1. **Response Caching**: Storing LLM responses to reduce latency and cost.
+2. **State Management**: Persisting budget usage and rate limit counters.
+3. **Semantic Caching**: (Coming Soon) Caching based on meaning rather than exact text.
+
+## Persistence Configuration
+
+To enable Redis, ensure you have a running Redis instance (e.g., via Docker) and configure it in `config.yaml`:
+
+```yaml
+redis:
+  addr: "localhost:6379"  # Or "redis:6379" if using Docker Compose
+  password: ""
+  db: 0
+```
+
+## Response Caching
+
+Caching identical requests can significantly speed up your application and save money on API credits.
+
+```yaml
+cache:
+  enabled: true
+  ttl: 3600  # Cache duration in seconds (1 hour)
+  
+  rules:
+    - cache: true
+      maxSize: 1024  # Only cache responses smaller than 1024 tokens
+    
+    - cache: false
+      if: request.user == "premium" # Dynamic rules
+```
+
+When caching is enabled, Octo Router generates a hash of the incoming request (messages, model, temperature) and checks Redis for an existing response.
+
+## State Sharing
+
+If you are running multiple instances of Octo Router (e.g., in Kubernetes), they will automatically share state via Redis. This means:
+- **Global Rate Limits** are enforced across the cluster.
+- **Budgets** are tracked globally, preventing overspending.
+
+No additional configuration is required for state sharing; it happens automatically when Redis is configured.

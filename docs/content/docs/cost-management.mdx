@@ -1,0 +1,61 @@
+---
+title: Cost Management
+description: Learn how to control costs and manage budgets with Octo Router.
+---
+
+One of Octo Router's primary goals is to make LLM usage affordable and predictable. It provides a robust budgeting system that tracks usage across all providers.
+
+## Budget Hierarchy
+
+Budgets can be defined at multiple levels in `config.yaml`:
+
+1. **Global Limits**: Caps the total spending across all users and providers.
+2. **Provider Limits**: Caps spending for a specific provider (e.g., OpenAI).
+3. **User Limits**: (Future) Caps spending per user.
+
+## Configuration
+
+To enable cost management, you must configure the `limits` and `costManagement` sections.
+
+```yaml
+limits:
+  # Daily global budget in USD
+  dailyBudget: 50.00
+  
+  # Alert threshold (logs a warning)
+  alertThreshold: 40.00
+  
+  providers:
+    openai:
+      budget: 10.00  # Stop OpenAI requests after $10
+    anthropic:
+      budget: 20.00
+```
+
+## Auto-Downgrade
+
+The "Auto-Downgrade" feature automatically switches to a cheaper model or provider when you are approaching your budget limits.
+
+```yaml
+costManagement:
+  autoDowngrade:
+    enabled: true
+    threshold: 0.9  # At 90% of usage, switch to cheaper models
+```
+
+## Tracking Costs
+
+Octo Router returns usage metadata in every response, compatible with the OpenAI format.
+
+```json
+{
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 20,
+    "total_tokens": 30,
+    "cost_usd": 0.00045 
+  }
+}
+```
+
+You can also query the [Admin API](/docs/api-reference#admin-api) to get current budget status.
